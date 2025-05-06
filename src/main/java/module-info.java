@@ -1,4 +1,6 @@
 module org.example.gui {
+    requires java.base;
+
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.web;
