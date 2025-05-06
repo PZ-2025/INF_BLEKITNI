@@ -25,5 +25,7 @@ module org.example.gui {
     exports org.example.sys;
     exports org.example.pdflib;*/
     requires org.hibernate.orm.core;
+    requires layout;
+    requires kernel;
 
 }

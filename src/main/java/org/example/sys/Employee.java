@@ -5,7 +5,9 @@ import org.example.wyjatki.SalaryException;
 
 import org.example.sys.Address;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "Pracownicy")
@@ -32,6 +34,9 @@ public class Employee {
 
     @Column(name = "Stanowisko")
     private String stanowisko;
+
+    @OneToMany(mappedBy = "pracownik", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Task> zadania = new ArrayList<>();
 
     // Pola związane z urlopem
     private boolean onSickLeave;
@@ -79,6 +84,18 @@ public class Employee {
             throw new SalaryException("Wynagrodzenie musi być większe od zera");
         }
         this.zarobki = zarobki;
+    }
+
+    public List<Task> getZadania() {
+        return zadania;
+    }
+
+    public void addTask(Task zadanie) {
+        zadania.add(zadanie);
+    }
+
+    public void removeTask(Task zadanie) {
+        zadania.remove(zadanie);
     }
 
     public String getStanowisko() { return stanowisko; }
