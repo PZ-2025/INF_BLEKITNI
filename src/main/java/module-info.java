@@ -29,5 +29,6 @@ module org.example.gui {
     requires org.hibernate.orm.core;
     requires layout;
     requires kernel;
+    requires io;
 
 }

@@ -1,6 +1,9 @@
 package org.example.pdflib;
 
+import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
@@ -23,12 +26,17 @@ public class WorkloadReportGenerator {
         PdfWriter writer = new PdfWriter(outputPath);
         PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf);
+        // Użycie fontu z kodowaniem Cp1250
+        String FONT = "/home/prawy126/Desktop/nauka/INF_BLEKITNI/src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf";  // Upewnij się, że plik istnieje
+        PdfFont font = PdfFontFactory.createFont(FONT, "Cp1250");  // true oznacza wbudowanie fontu
 
         // Nagłówek raportu
         Paragraph header = new Paragraph("Raport obciążenia pracowników")
+                .setFont(font)
                 .setFontSize(20)
                 .setBold();
         document.add(header);
+        document.setFont(font);
 
         // Informacje o parametrach
         document.add(new Paragraph("\nData wygenerowania: " + LocalDate.now()));
