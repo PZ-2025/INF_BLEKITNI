@@ -22,7 +22,7 @@ import java.util.List;
  * oraz ścieżkę do logo można konfigurować setterami.
  */
 public class WorkloadReportGenerator {
-
+    //TODO: Trzy sposoby filtrowania
     /* ---------- konfiguracja progów ---------- */
     private double lowerThreshold = 120;
     private double upperThreshold = 160;
