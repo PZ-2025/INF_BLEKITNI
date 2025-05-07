@@ -18,18 +18,50 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class WorkloadReportGenerator {
-
     private static final Logger logger = LogManager.getLogger(WorkloadReportGenerator.class);
+    //TODO: Trzy sposoby filtrowania
+    /* ---------- konfiguracja progów ---------- */
+    private double lowerThreshold = 120;
+    private double upperThreshold = 160;
+
+    /* ----------  ścieżka do pliku z logo  ---------- */
+    /** Domyślna lokalizacja logo (można ją zmienić setterem) */
+    private String logoPath = "src/main/resources/logo.png";
+
+    /* ======  GETTERY / SETTERY  ================================================= */
+
+    public double getLowerThreshold() { return lowerThreshold; }
+    public double getUpperThreshold() { return upperThreshold; }
+    public String getLogoPath() { return logoPath; }
+
+    public void setLowerThreshold(double value) {
+        if (value < 0 || value >= upperThreshold) {
+            throw new IllegalArgumentException("lowerThreshold musi być ≥0 i < upperThreshold");
+        }
+        this.lowerThreshold = value;
+    }
+
+    public void setUpperThreshold(double value) {
+        if (value <= lowerThreshold) {
+            throw new IllegalArgumentException("upperThreshold musi być > lowerThreshold");
+        }
+        this.upperThreshold = value;
+    }
+
+    public void setLogoPath(String path) {
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("logoPath nie może być puste");
+        }
+        this.logoPath = path;
+    }
 
     public void generateReport(String outputPath,
                                LocalDate startDate,
                                LocalDate endDate,
-                               List<String> selectedDepartments,
-                               List<String> selectedTaskTypes) {
+                               List<String> selectedDepartments) throws NoDataException {
         try {
             logger.info("Rozpoczynanie generowania raportu: {}", outputPath);
 
-            // Upewniamy się, że katalog istnieje
             File outputFile = new File(outputPath);
             File parentDir = outputFile.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
@@ -40,15 +72,20 @@ public class WorkloadReportGenerator {
                 }
             }
 
+            List<EmployeeWorkload> workloadData = loadWorkloadData(startDate, endDate, selectedDepartments);
+            if (workloadData == null || workloadData.isEmpty()) {
+                logger.warn("Brak danych do wygenerowania raportu.");
+                throw new NoDataException("Brak danych do wygenerowania raportu.");
+            }
+
             PdfWriter writer = new PdfWriter(outputPath);
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
-            // Font do obsługi polskich znaków
             String FONT = "src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf";
             PdfFont font = PdfFontFactory.createFont(FONT, "Cp1250");
-
             document.setFont(font);
+
             Paragraph header = new Paragraph("Raport obciążenia pracowników")
                     .setFontSize(20)
                     .setBold();
@@ -57,7 +94,6 @@ public class WorkloadReportGenerator {
             document.add(new Paragraph("\nData wygenerowania: " + LocalDate.now()));
             document.add(new Paragraph("Okres raportowania: " + startDate + " - " + endDate));
             document.add(new Paragraph("Wybrane działy: " + String.join(", ", selectedDepartments)));
-            document.add(new Paragraph("Rodzaje zadań: " + String.join(", ", selectedTaskTypes)));
 
             Table table = new Table(5).setMarginTop(20);
             addHeaderCell(table, "Pracownik");
@@ -66,7 +102,6 @@ public class WorkloadReportGenerator {
             addHeaderCell(table, "Godziny");
             addHeaderCell(table, "Status obciążenia");
 
-            List<EmployeeWorkload> workloadData = loadWorkloadData(startDate, endDate, selectedDepartments, selectedTaskTypes);
             for (EmployeeWorkload entry : workloadData) {
                 table.addCell(entry.getEmployeeName());
                 table.addCell(entry.getDepartment());
@@ -78,6 +113,8 @@ public class WorkloadReportGenerator {
             document.add(table);
             document.close();
             logger.info("Raport został pomyślnie zapisany do: {}", outputPath);
+        } catch (NoDataException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Błąd podczas generowania raportu: {}", e.getMessage(), e);
         }
@@ -96,9 +133,8 @@ public class WorkloadReportGenerator {
         return "Optymalne";
     }
 
-    private List<EmployeeWorkload> loadWorkloadData(LocalDate start, LocalDate end,
-                                                    List<String> departments,
-                                                    List<String> taskTypes) {
+    protected List<EmployeeWorkload> loadWorkloadData(LocalDate start, LocalDate end,
+                                                      List<String> departments) {
         logger.debug("Ładowanie przykładowych danych testowych dla raportu...");
         List<EmployeeWorkload> list = new ArrayList<>();
         list.add(new EmployeeWorkload("Jan Kowalski", "Sprzedaż", 15, 175));
