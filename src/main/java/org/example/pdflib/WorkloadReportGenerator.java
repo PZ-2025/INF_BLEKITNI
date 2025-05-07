@@ -9,63 +9,78 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.element.Cell;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 
 public class WorkloadReportGenerator {
 
+    private static final Logger logger = LogManager.getLogger(WorkloadReportGenerator.class);
+
     public void generateReport(String outputPath,
                                LocalDate startDate,
                                LocalDate endDate,
                                List<String> selectedDepartments,
-                               List<String> selectedTaskTypes) throws Exception {
+                               List<String> selectedTaskTypes) {
+        try {
+            logger.info("Rozpoczynanie generowania raportu: {}", outputPath);
 
-        PdfWriter writer = new PdfWriter(outputPath);
-        PdfDocument pdf = new PdfDocument(writer);
-        Document document = new Document(pdf);
-        // Użycie fontu z kodowaniem Cp1250
-        String FONT = "src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf";  // Upewnij się, że plik istnieje
-        PdfFont font = PdfFontFactory.createFont(FONT, "Cp1250");  // true oznacza wbudowanie fontu
+            // Upewniamy się, że katalog istnieje
+            File outputFile = new File(outputPath);
+            File parentDir = outputFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                if (parentDir.mkdirs()) {
+                    logger.info("Utworzono katalog: {}", parentDir.getAbsolutePath());
+                } else {
+                    logger.warn("Nie udało się utworzyć katalogu: {}", parentDir.getAbsolutePath());
+                }
+            }
 
-        // Nagłówek raportu
-        Paragraph header = new Paragraph("Raport obciążenia pracowników")
-                .setFont(font)
-                .setFontSize(20)
-                .setBold();
-        document.add(header);
-        document.setFont(font);
+            PdfWriter writer = new PdfWriter(outputPath);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
 
-        // Informacje o parametrach
-        document.add(new Paragraph("\nData wygenerowania: " + LocalDate.now()));
-        document.add(new Paragraph("Okres raportowania: " + startDate + " - " + endDate));
-        document.add(new Paragraph("Wybrane dzialy: " + String.join(", ", selectedDepartments)));
-        document.add(new Paragraph("Rodzaje zadań: " + String.join(", ", selectedTaskTypes)));
+            // Font do obsługi polskich znaków
+            String FONT = "src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf";
+            PdfFont font = PdfFontFactory.createFont(FONT, "Cp1250");
 
-        // Tabela z danymi
-        Table table = new Table(5).setMarginTop(20);
+            document.setFont(font);
+            Paragraph header = new Paragraph("Raport obciążenia pracowników")
+                    .setFontSize(20)
+                    .setBold();
+            document.add(header);
 
-        // Nagłówki
-        addHeaderCell(table, "Pracownik");
-        addHeaderCell(table, "Dział");
-        addHeaderCell(table, "Liczba zadań");
-        addHeaderCell(table, "Godziny");
-        addHeaderCell(table, "Status obciążenia");
+            document.add(new Paragraph("\nData wygenerowania: " + LocalDate.now()));
+            document.add(new Paragraph("Okres raportowania: " + startDate + " - " + endDate));
+            document.add(new Paragraph("Wybrane działy: " + String.join(", ", selectedDepartments)));
+            document.add(new Paragraph("Rodzaje zadań: " + String.join(", ", selectedTaskTypes)));
 
-        // Dane
-        List<EmployeeWorkload> workloadData = loadWorkloadData(startDate, endDate, selectedDepartments, selectedTaskTypes);
+            Table table = new Table(5).setMarginTop(20);
+            addHeaderCell(table, "Pracownik");
+            addHeaderCell(table, "Dział");
+            addHeaderCell(table, "Liczba zadań");
+            addHeaderCell(table, "Godziny");
+            addHeaderCell(table, "Status obciążenia");
 
-        for (EmployeeWorkload entry : workloadData) {
-            table.addCell(entry.getEmployeeName());
-            table.addCell(entry.getDepartment());
-            table.addCell(String.valueOf(entry.getTaskCount()));
-            table.addCell(String.valueOf(entry.getTotalHours()));
-            table.addCell(getWorkloadStatus(entry.getTotalHours()));
+            List<EmployeeWorkload> workloadData = loadWorkloadData(startDate, endDate, selectedDepartments, selectedTaskTypes);
+            for (EmployeeWorkload entry : workloadData) {
+                table.addCell(entry.getEmployeeName());
+                table.addCell(entry.getDepartment());
+                table.addCell(String.valueOf(entry.getTaskCount()));
+                table.addCell(String.valueOf(entry.getTotalHours()));
+                table.addCell(getWorkloadStatus(entry.getTotalHours()));
+            }
+
+            document.add(table);
+            document.close();
+            logger.info("Raport został pomyślnie zapisany do: {}", outputPath);
+        } catch (Exception e) {
+            logger.error("Błąd podczas generowania raportu: {}", e.getMessage(), e);
         }
-
-        document.add(table);
-        document.close();
     }
 
     private void addHeaderCell(Table table, String text) {
@@ -81,17 +96,16 @@ public class WorkloadReportGenerator {
         return "Optymalne";
     }
 
-    // Dane testowe
     private List<EmployeeWorkload> loadWorkloadData(LocalDate start, LocalDate end,
                                                     List<String> departments,
                                                     List<String> taskTypes) {
+        logger.debug("Ładowanie przykładowych danych testowych dla raportu...");
         List<EmployeeWorkload> list = new ArrayList<>();
         list.add(new EmployeeWorkload("Jan Kowalski", "Sprzedaż", 15, 175));
         list.add(new EmployeeWorkload("Anna Nowak", "Magazyn", 8, 95));
         return list;
     }
 
-    // Klasa pomocnicza
     public static class EmployeeWorkload {
         private final String employeeName;
         private final String department;

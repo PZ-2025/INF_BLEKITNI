@@ -31,4 +31,8 @@ module org.example.gui {
     requires kernel;
     requires io;
 
+    requires org.apache.logging.log4j;
+    requires org.apache.logging.log4j.core;
+    requires org.apache.logging.log4j.slf4j;
+
 }
