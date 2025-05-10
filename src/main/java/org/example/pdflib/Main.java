@@ -10,7 +10,7 @@ public class Main {
         WorkloadReportGenerator generator = new WorkloadReportGenerator() {
             @Override
             protected List<EmployeeWorkload> loadWorkloadData(LocalDate s, LocalDate e,
-                                                              List<String> departments) {
+                                                              List<String> positions) {
                 return List.of(
                         new EmployeeWorkload("1", "Kierownik", 18, 172),
                         new EmployeeWorkload("2",  "Kasjer",     10, 96)

@@ -1,25 +1,31 @@
 package org.example.pdflib;
 
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.borders.Border;
+import com.itextpdf.layout.element.*;
+import com.itextpdf.layout.properties.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.ArrayList;
 
+/**
+ * Generator raportu obciążenia pracowników – progi godzin
+ * oraz ścieżkę do logo można konfigurować setterami.
+ */
 public class WorkloadReportGenerator {
     private static final Logger logger = LogManager.getLogger(WorkloadReportGenerator.class);
-    //TODO: Trzy sposoby filtrowania
+
     /* ---------- konfiguracja progów ---------- */
     private double lowerThreshold = 120;
     private double upperThreshold = 160;
@@ -35,129 +41,201 @@ public class WorkloadReportGenerator {
     public String getLogoPath() { return logoPath; }
 
     public void setLowerThreshold(double value) {
+        logger.debug("Setting lower threshold to: {}", value);
         if (value < 0 || value >= upperThreshold) {
+            logger.error("Invalid lower threshold value: {}", value);
             throw new IllegalArgumentException("lowerThreshold musi być ≥0 i < upperThreshold");
         }
         this.lowerThreshold = value;
     }
 
     public void setUpperThreshold(double value) {
+        logger.debug("Setting upper threshold to: {}", value);
         if (value <= lowerThreshold) {
+            logger.error("Invalid upper threshold value: {}", value);
             throw new IllegalArgumentException("upperThreshold musi być > lowerThreshold");
         }
         this.upperThreshold = value;
     }
 
     public void setLogoPath(String path) {
+        logger.debug("Setting logo path to: {}", path);
         if (path == null || path.isBlank()) {
+            logger.error("Invalid logo path: {}", path);
             throw new IllegalArgumentException("logoPath nie może być puste");
         }
         this.logoPath = path;
     }
 
+    /**
+     * Generates a workload report as a PDF file.
+     *
+     * @param outputPath Path where the PDF file will be saved
+     * @param startDate Start date of the reporting period
+     * @param endDate End date of the reporting period
+     * @param selectedPositions List of positions to include in the report
+     * @throws Exception If there's an error during PDF generation
+     */
     public void generateReport(String outputPath,
                                LocalDate startDate,
                                LocalDate endDate,
-                               List<String> selectedDepartments) throws NoDataException {
-        try {
-            logger.info("Rozpoczynanie generowania raportu: {}", outputPath);
+                               List<String> selectedPositions)
+            throws Exception {
 
-            File outputFile = new File(outputPath);
-            File parentDir = outputFile.getParentFile();
-            if (parentDir != null && !parentDir.exists()) {
-                if (parentDir.mkdirs()) {
-                    logger.info("Utworzono katalog: {}", parentDir.getAbsolutePath());
-                } else {
-                    logger.warn("Nie udało się utworzyć katalogu: {}", parentDir.getAbsolutePath());
-                }
+        logger.info("Starting report generation: outputPath={}, period={} to {}, positions={}",
+                outputPath, startDate, endDate, selectedPositions);
+
+        List<EmployeeWorkload> workloadData =
+                loadWorkloadData(startDate, endDate, selectedPositions);
+
+        if (workloadData == null || workloadData.isEmpty()) {
+            logger.warn("No data available for report generation");
+            throw new NoDataException("Brak danych do wygenerowania raportu.");
+        }
+
+        File targetFile = new File(outputPath);
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            logger.debug("Creating parent directory: {}", parentDir.getAbsolutePath());
+            if (!parentDir.mkdirs()) {
+                logger.error("Failed to create directory: {}", parentDir.getAbsolutePath());
+                throw new IllegalStateException("Nie można utworzyć katalogu: " + parentDir);
             }
+        }
 
-            List<EmployeeWorkload> workloadData = loadWorkloadData(startDate, endDate, selectedDepartments);
-            if (workloadData == null || workloadData.isEmpty()) {
-                logger.warn("Brak danych do wygenerowania raportu.");
-                throw new NoDataException("Brak danych do wygenerowania raportu.");
-            }
+        /* --- tworzenie PDF ----------------------------------------------------- */
+        logger.debug("Creating PDF document");
+        try (PdfWriter writer = new PdfWriter(outputPath);
+             PdfDocument pdf = new PdfDocument(writer);
+             Document document = new Document(pdf, PageSize.A4)) {
 
-            PdfWriter writer = new PdfWriter(outputPath);
-            PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf);
-
-            String FONT = "src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf";
-            PdfFont font = PdfFontFactory.createFont(FONT, "Cp1250");
+            logger.debug("Setting up document font and styling");
+            PdfFont font = PdfFontFactory.createFont(
+                    "src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf", "Cp1250");
             document.setFont(font);
 
-            Paragraph header = new Paragraph("Raport obciążenia pracowników")
-                    .setFontSize(20)
-                    .setBold();
-            document.add(header);
+            /* nagłówek z logo i tytułem */
+            logger.debug("Adding header with logo and title");
+            Table header = new Table(new float[]{1, 3}).setWidth(500);
 
-            document.add(new Paragraph("\nData wygenerowania: " + LocalDate.now()));
-            document.add(new Paragraph("Okres raportowania: " + startDate + " - " + endDate));
-            document.add(new Paragraph("Wybrane działy: " + String.join(", ", selectedDepartments)));
-
-            Table table = new Table(5).setMarginTop(20);
-            addHeaderCell(table, "Pracownik");
-            addHeaderCell(table, "Dział");
-            addHeaderCell(table, "Liczba zadań");
-            addHeaderCell(table, "Godziny");
-            addHeaderCell(table, "Status obciążenia");
-
-            for (EmployeeWorkload entry : workloadData) {
-                table.addCell(entry.getEmployeeName());
-                table.addCell(entry.getDepartment());
-                table.addCell(String.valueOf(entry.getTaskCount()));
-                table.addCell(String.valueOf(entry.getTotalHours()));
-                table.addCell(getWorkloadStatus(entry.getTotalHours()));
+            File logoFile = new File(logoPath);
+            if (!logoFile.exists()) {
+                logger.error("Logo file not found: {}", logoPath);
+                throw new IllegalStateException("Nie znaleziono pliku logo: " + logoPath);
             }
 
-            document.add(table);
-            document.close();
-            logger.info("Raport został pomyślnie zapisany do: {}", outputPath);
-        } catch (NoDataException e) {
-            throw e;
+            ImageData logo = ImageDataFactory.create(logoFile.getAbsolutePath());
+            header.addCell(new Cell().add(new Image(logo).scaleToFit(80, 80))
+                    .setBorder(Border.NO_BORDER)
+                    .setTextAlignment(TextAlignment.CENTER));
+
+            header.addCell(new Cell().add(
+                            new Paragraph("Raport obciążenia pracowników")
+                                    .setFontSize(20).setBold())
+                    .setBorder(Border.NO_BORDER)
+                    .setVerticalAlignment(VerticalAlignment.MIDDLE));
+            document.add(header);
+
+            document.add(new Paragraph("Data wygenerowania: " + LocalDate.now()).setMarginBottom(10));
+            document.add(new Paragraph("Okres raportowania: " + startDate + " – " + endDate));
+            document.add(new Paragraph("Wybrane stanowiska: " +
+                    String.join(", ", selectedPositions)));
+            document.add(new Paragraph("\n"));
+
+            /* tabela główna */
+            logger.debug("Creating main data table");
+            Table table = new Table(new float[]{3, 2, 2, 2, 2})
+                    .setWidth(UnitValue.createPercentValue(100));
+            addHeader(table,
+                    "ID pracownika",
+                    "Stanowisko",
+                    "Liczba zadań",
+                    "Godziny",
+                    "Status");
+
+            int overloaded = 0, underloaded = 0, optimal = 0;
+            for (EmployeeWorkload e : workloadData) {
+                String status = getWorkloadStatus(e.totalHours());
+                switch (status) {
+                    case "Przeciążenie"  -> overloaded++;
+                    case "Niedociążenie" -> underloaded++;
+                    default              -> optimal++;
+                }
+                table.addCell(e.employeeName());
+                table.addCell(e.department());
+                table.addCell(String.valueOf(e.taskCount()));
+                table.addCell(String.valueOf(e.totalHours()));
+                table.addCell(status);
+            }
+            document.add(table).add(new Paragraph("\n"));
+
+            logger.debug("Adding summary table");
+            Table summary = new Table(new float[]{3, 1})
+                    .setWidth(UnitValue.createPercentValue(100))
+                    .setHorizontalAlignment(HorizontalAlignment.RIGHT);
+            addHeader(summary, "Podsumowanie", "Liczba");
+            summary.addCell("Przeciążeni").addCell(String.valueOf(overloaded));
+            summary.addCell("Niedociążeni").addCell(String.valueOf(underloaded));
+            summary.addCell("Optymalne").addCell(String.valueOf(optimal));
+
+            document.add(summary);
+
+            logger.info("Report successfully generated: {}", outputPath);
         } catch (Exception e) {
-            logger.error("Błąd podczas generowania raportu: {}", e.getMessage(), e);
+            logger.error("Error generating report: {}", e.getMessage(), e);
+            throw e;
         }
     }
 
-    private void addHeaderCell(Table table, String text) {
-        Cell headerCell = new Cell()
-                .add(new Paragraph(text).setBold())
-                .setBackgroundColor(ColorConstants.LIGHT_GRAY);
-        table.addCell(headerCell);
+    /* ======  METODY POMOCNICZE  =============================================== */
+
+    /**
+     * Loads workload data for the specified period and positions.
+     * This method should be overridden in production to fetch actual data.
+     *
+     * @param start Start date
+     * @param end End date
+     * @param positions List of positions to include
+     * @return List of employee workload records
+     */
+    protected List<EmployeeWorkload> loadWorkloadData(LocalDate start, LocalDate end, List<String> positions) {
+        logger.debug("Loading workload data for period {} to {}, positions: {}", start, end, positions);
+        // This is a placeholder - in a real implementation, this would fetch data from a database
+        return List.of(
+                new EmployeeWorkload("Jan Kowalski", "Sprzedaż", 15, 175),
+                new EmployeeWorkload("Anna Nowak", "Magazyn", 8, 95),
+                new EmployeeWorkload("Piotr Wiśniewski", "IT", 12, 140)
+        );
     }
 
+    /**
+     * Adds a header row to a table.
+     *
+     * @param t The table to add the header to
+     * @param labels The header cell labels
+     */
+    private void addHeader(Table t, String... labels) {
+        for (String l : labels) {
+            t.addHeaderCell(new Cell().add(new Paragraph(l).setBold())
+                    .setBackgroundColor(ColorConstants.LIGHT_GRAY));
+        }
+    }
+
+    /**
+     * Determines the workload status based on hours worked.
+     *
+     * @param hours Number of hours worked
+     * @return Status description (Przeciążenie, Niedociążenie, or Optymalne)
+     */
     private String getWorkloadStatus(double hours) {
-        if (hours > 160) return "Przeciążenie";
-        if (hours < 120) return "Niedociążenie";
+        if (hours > upperThreshold) return "Przeciążenie";
+        if (hours < lowerThreshold) return "Niedociążenie";
         return "Optymalne";
     }
 
-    protected List<EmployeeWorkload> loadWorkloadData(LocalDate start, LocalDate end,
-                                                      List<String> departments) {
-        logger.debug("Ładowanie przykładowych danych testowych dla raportu...");
-        List<EmployeeWorkload> list = new ArrayList<>();
-        list.add(new EmployeeWorkload("Jan Kowalski", "Sprzedaż", 15, 175));
-        list.add(new EmployeeWorkload("Anna Nowak", "Magazyn", 8, 95));
-        return list;
-    }
-
-    public static class EmployeeWorkload {
-        private final String employeeName;
-        private final String department;
-        private final int taskCount;
-        private final double totalHours;
-
-        public EmployeeWorkload(String employeeName, String department, int taskCount, double totalHours) {
-            this.employeeName = employeeName;
-            this.department = department;
-            this.taskCount = taskCount;
-            this.totalHours = totalHours;
-        }
-
-        public String getEmployeeName() { return employeeName; }
-        public String getDepartment() { return department; }
-        public int getTaskCount() { return taskCount; }
-        public double getTotalHours() { return totalHours; }
-    }
+    /**
+     * Record representing employee workload data.
+     */
+    public record EmployeeWorkload(String employeeName, String department,
+                                   int taskCount, double totalHours) {}
 }
