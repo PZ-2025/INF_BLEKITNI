@@ -16,119 +16,217 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Generator raportu obciążenia pracowników – progi godzin
- * oraz ścieżkę do logo można konfigurować setterami.
+ * Generator raportów obciążenia pracowników.
+ * <p>
+ * Klasa umożliwia generowanie raportów PDF przedstawiających obciążenie pracowników
+ * w określonym czasie. Raport zawiera informacje o średnim tygodniowym
+ * obciążeniu pracowników i klasyfikuje ich według norm tygodniowych.
+ * </p>
+ * <p>
+ * Normy tygodniowe oraz ścieżkę do logo można konfigurować za pomocą odpowiednich setterów.
+ * </p>
+ *
+ * @author BŁĘKITNI
+ * @version 1.2.0
  */
 public class WorkloadReportGenerator {
     private static final Logger logger = LogManager.getLogger(WorkloadReportGenerator.class);
 
-    /* ---------- konfiguracja progów ---------- */
-    private double lowerThreshold = 120;
-    private double upperThreshold = 160;
+    /** Minimalna norma tygodniowa w godzinach (domyślnie 40h) */
+    private double minWeeklyNorm = 40;
 
-    /* ----------  ścieżka do pliku z logo  ---------- */
-    /** Domyślna lokalizacja logo (można ją zmienić setterem) */
+    /** Maksymalna norma tygodniowa w godzinach (domyślnie 48h) */
+    private double maxWeeklyNorm = 48;
+
+    /** Ścieżka do pliku z logo firmy */
     private String logoPath = "src/main/resources/logo.png";
 
-    /* ======  GETTERY / SETTERY  ================================================= */
+    /** Lista danych o obciążeniu pracowników */
+    private List<EmployeeWorkload> workloadData;
 
-    public double getLowerThreshold() { return lowerThreshold; }
-    public double getUpperThreshold() { return upperThreshold; }
+    /**
+     * Zwraca minimalną normę tygodniową.
+     *
+     * @return Minimalna liczba godzin w tygodniu
+     */
+    public double getMinWeeklyNorm() { return minWeeklyNorm; }
+
+    /**
+     * Zwraca maksymalną normę tygodniową.
+     *
+     * @return Maksymalna liczba godzin w tygodniu
+     */
+    public double getMaxWeeklyNorm() { return maxWeeklyNorm; }
+
+    /**
+     * Zwraca ścieżkę do pliku z logo.
+     *
+     * @return Ścieżka do pliku z logo
+     */
     public String getLogoPath() { return logoPath; }
 
-    public void setLowerThreshold(double value) {
-        logger.debug("Setting lower threshold to: {}", value);
-        if (value < 0 || value >= upperThreshold) {
-            logger.error("Invalid lower threshold value: {}", value);
-            throw new IllegalArgumentException("lowerThreshold musi być ≥0 i < upperThreshold");
+    /**
+     * Ustawia minimalną normę tygodniową.
+     *
+     * @param value Nowa wartość minimalnej normy tygodniowej
+     * @throws IllegalArgumentException Gdy wartość jest ujemna lub większa/równa maksymalnej normie
+     */
+    public void setMinWeeklyNorm(double value) {
+        if (value < 0 || value >= maxWeeklyNorm) {
+            throw new IllegalArgumentException("minWeeklyNorm musi być ≥0 i < maxWeeklyNorm");
         }
-        this.lowerThreshold = value;
+        this.minWeeklyNorm = value;
     }
 
-    public void setUpperThreshold(double value) {
-        logger.debug("Setting upper threshold to: {}", value);
-        if (value <= lowerThreshold) {
-            logger.error("Invalid upper threshold value: {}", value);
-            throw new IllegalArgumentException("upperThreshold musi być > lowerThreshold");
+    /**
+     * Ustawia maksymalną normę tygodniową.
+     *
+     * @param value Nowa wartość maksymalnej normy tygodniowej
+     * @throws IllegalArgumentException Gdy wartość jest mniejsza lub równa minimalnej normie
+     */
+    public void setMaxWeeklyNorm(double value) {
+        if (value <= minWeeklyNorm) {
+            throw new IllegalArgumentException("maxWeeklyNorm musi być > minWeeklyNorm");
         }
-        this.upperThreshold = value;
+        this.maxWeeklyNorm = value;
     }
 
+    /**
+     * Ustawia ścieżkę do pliku z logo.
+     *
+     * @param path Nowa ścieżka do pliku z logo
+     * @throws IllegalArgumentException Gdy ścieżka jest pusta lub null
+     */
     public void setLogoPath(String path) {
-        logger.debug("Setting logo path to: {}", path);
         if (path == null || path.isBlank()) {
-            logger.error("Invalid logo path: {}", path);
             throw new IllegalArgumentException("logoPath nie może być puste");
         }
         this.logoPath = path;
     }
 
     /**
-     * Generates a workload report as a PDF file.
+     * Ustawia dane o obciążeniu pracowników.
      *
-     * @param outputPath Path where the PDF file will be saved
-     * @param startDate Start date of the reporting period
-     * @param endDate End date of the reporting period
-     * @param selectedPositions List of positions to include in the report
-     * @throws Exception If there's an error during PDF generation
+     * @param workloadData Lista danych o obciążeniu pracowników
+     */
+    public void setWorkloadData(List<EmployeeWorkload> workloadData) {
+        this.workloadData = workloadData;
+    }
+
+    /**
+     * Generuje raport obciążenia pracowników bez filtrowania według statusu.
+     *
+     * @param outputPath Ścieżka do pliku wyjściowego PDF
+     * @param startDate Data początkowa okresu raportowania (zostanie dostosowana do najbliższego poniedziałku)
+     * @param endDate Data końcowa okresu raportowania (zostanie dostosowana do najbliższej niedzieli)
+     * @param selectedPositions Lista wybranych stanowisk do uwzględnienia w raporcie
+     * @throws Exception Gdy wystąpi błąd podczas generowania raportu
      */
     public void generateReport(String outputPath,
                                LocalDate startDate,
                                LocalDate endDate,
                                List<String> selectedPositions)
             throws Exception {
+        generateReport(outputPath, startDate, endDate, selectedPositions, null);
+    }
 
-        logger.info("Starting report generation: outputPath={}, period={} to {}, positions={}",
-                outputPath, startDate, endDate, selectedPositions);
+    /**
+     * Generuje raport obciążenia pracowników z możliwością filtrowania według statusu.
+     *
+     * @param outputPath Ścieżka do pliku wyjściowego PDF
+     * @param startDate Data początkowa okresu raportowania (zostanie dostosowana do najbliższego poniedziałku)
+     * @param endDate Data końcowa okresu raportowania (zostanie dostosowana do najbliższej niedzieli)
+     * @param selectedPositions Lista wybranych stanowisk do uwzględnienia w raporcie
+     * @param selectedStatuses Lista wybranych statusów do uwzględnienia w raporcie (Przeciążenie, Niedociążenie, Optymalne)
+     * @throws Exception Gdy wystąpi błąd podczas generowania raportu
+     */
+    public void generateReport(String outputPath,
+                               LocalDate startDate,
+                               LocalDate endDate,
+                               List<String> selectedPositions,
+                               List<String> selectedStatuses)
+            throws Exception {
 
-        List<EmployeeWorkload> workloadData =
-                loadWorkloadData(startDate, endDate, selectedPositions);
+        // Dostosowanie dat do pełnych tygodni (poniedziałek-niedziela)
+        LocalDate adjustedStartDate = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate adjustedEndDate = endDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
+        // Obliczenie liczby tygodni w okresie
+        long numberOfWeeks = ChronoUnit.WEEKS.between(adjustedStartDate, adjustedEndDate.plusDays(1));
+        if (numberOfWeeks < 1) numberOfWeeks = 1;
+
+        // Sprawdzenie czy mamy dane wejściowe
         if (workloadData == null || workloadData.isEmpty()) {
-            logger.warn("No data available for report generation");
             throw new NoDataException("Brak danych do wygenerowania raportu.");
         }
 
-        File targetFile = new File(outputPath);
-        File parentDir = targetFile.getParentFile();
-        if (parentDir != null && !parentDir.exists()) {
-            logger.debug("Creating parent directory: {}", parentDir.getAbsolutePath());
-            if (!parentDir.mkdirs()) {
-                logger.error("Failed to create directory: {}", parentDir.getAbsolutePath());
-                throw new IllegalStateException("Nie można utworzyć katalogu: " + parentDir);
-            }
+        // Filtrowanie danych według stanowisk
+        List<EmployeeWorkload> filteredByPosition = loadWorkloadData(adjustedStartDate, adjustedEndDate, selectedPositions, workloadData);
+
+        // Przygotowanie danych z obliczonym statusem dla każdego pracownika
+        List<EmployeeWithStatus> employeesWithStatus = new ArrayList<>();
+        for (EmployeeWorkload employee : filteredByPosition) {
+            double weeklyAverage = employee.totalHours() / numberOfWeeks;
+            String status = getWorkloadStatus(weeklyAverage);
+            employeesWithStatus.add(new EmployeeWithStatus(employee, weeklyAverage, status));
         }
 
-        /* --- tworzenie PDF ----------------------------------------------------- */
-        logger.debug("Creating PDF document");
+        // Filtrowanie według statusu, jeśli podano
+        List<EmployeeWithStatus> filteredEmployees;
+        if (selectedStatuses != null && !selectedStatuses.isEmpty()) {
+            filteredEmployees = employeesWithStatus.stream()
+                    .filter(e -> selectedStatuses.contains(e.status))
+                    .toList();
+
+            // Sprawdzenie czy po filtrowaniu mamy jakieś dane
+            if (filteredEmployees.isEmpty()) {
+                throw new NoDataException("Brak danych dla wybranych statusów: " + String.join(", ", selectedStatuses));
+            }
+        } else {
+            filteredEmployees = employeesWithStatus;
+        }
+
+        // Tworzenie katalogu docelowego, jeśli nie istnieje
+        File targetFile = new File(outputPath);
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+            throw new IllegalStateException("Nie można utworzyć katalogu: " + parentDir);
+        }
+
+        // Generowanie dokumentu PDF
         try (PdfWriter writer = new PdfWriter(outputPath);
              PdfDocument pdf = new PdfDocument(writer);
              Document document = new Document(pdf, PageSize.A4)) {
 
-            logger.debug("Setting up document font and styling");
+            // Ustawienie czcionki dokumentu
             PdfFont font = PdfFontFactory.createFont(
                     "src/main/java/org/example/pdflib/NotoSans-VariableFont_wdth,wght.ttf", "Cp1250");
             document.setFont(font);
 
-            /* nagłówek z logo i tytułem */
-            logger.debug("Adding header with logo and title");
+            // Tworzenie nagłówka z logo i tytułem
             Table header = new Table(new float[]{1, 3}).setWidth(500);
 
+            // Sprawdzenie czy plik logo istnieje
             File logoFile = new File(logoPath);
             if (!logoFile.exists()) {
-                logger.error("Logo file not found: {}", logoPath);
                 throw new IllegalStateException("Nie znaleziono pliku logo: " + logoPath);
             }
 
+            // Dodanie logo do nagłówka
             ImageData logo = ImageDataFactory.create(logoFile.getAbsolutePath());
             header.addCell(new Cell().add(new Image(logo).scaleToFit(80, 80))
                     .setBorder(Border.NO_BORDER)
                     .setTextAlignment(TextAlignment.CENTER));
 
+            // Dodanie tytułu do nagłówka
             header.addCell(new Cell().add(
                             new Paragraph("Raport obciążenia pracowników")
                                     .setFontSize(20).setBold())
@@ -136,40 +234,53 @@ public class WorkloadReportGenerator {
                     .setVerticalAlignment(VerticalAlignment.MIDDLE));
             document.add(header);
 
+            // Dodanie informacji o raporcie
             document.add(new Paragraph("Data wygenerowania: " + LocalDate.now()).setMarginBottom(10));
-            document.add(new Paragraph("Okres raportowania: " + startDate + " – " + endDate));
+            document.add(new Paragraph("Okres raportowania: " + adjustedStartDate + " – " + adjustedEndDate));
+            document.add(new Paragraph("Liczba tygodni: " + numberOfWeeks));
+            document.add(new Paragraph("Norma tygodniowa: " + minWeeklyNorm + " – " + maxWeeklyNorm + " godzin"));
             document.add(new Paragraph("Wybrane stanowiska: " +
                     String.join(", ", selectedPositions)));
+
+            // Dodanie informacji o wybranych statusach, jeśli zdefiniowane
+            if (selectedStatuses != null && !selectedStatuses.isEmpty()) {
+                document.add(new Paragraph("Filtry statusów: " +
+                        String.join(", ", selectedStatuses)));
+            }
+
             document.add(new Paragraph("\n"));
 
-            /* tabela główna */
-            logger.debug("Creating main data table");
+            // Tworzenie tabeli z danymi pracowników
             Table table = new Table(new float[]{3, 2, 2, 2, 2})
                     .setWidth(UnitValue.createPercentValue(100));
             addHeader(table,
                     "ID pracownika",
                     "Stanowisko",
-                    "Liczba zadań",
                     "Godziny",
+                    "Średnio/tydzień",
                     "Status");
 
+            // Zliczanie do podsumowania
             int overloaded = 0, underloaded = 0, optimal = 0;
-            for (EmployeeWorkload e : workloadData) {
-                String status = getWorkloadStatus(e.totalHours());
-                switch (status) {
+
+            // Dodawanie przefiltrowanych pracowników do tabeli
+            for (EmployeeWithStatus e : filteredEmployees) {
+                // Zliczanie do podsumowania
+                switch (e.status) {
                     case "Przeciążenie"  -> overloaded++;
                     case "Niedociążenie" -> underloaded++;
                     default              -> optimal++;
                 }
-                table.addCell(e.employeeName());
-                table.addCell(e.department());
-                table.addCell(String.valueOf(e.taskCount()));
-                table.addCell(String.valueOf(e.totalHours()));
-                table.addCell(status);
+
+                table.addCell(e.employee.employeeName());
+                table.addCell(e.employee.department());
+                table.addCell(String.valueOf(e.employee.totalHours()));
+                table.addCell(String.format("%.1f", e.weeklyAverage));
+                table.addCell(e.status);
             }
             document.add(table).add(new Paragraph("\n"));
 
-            logger.debug("Adding summary table");
+            // Tworzenie tabeli podsumowującej
             Table summary = new Table(new float[]{3, 1})
                     .setWidth(UnitValue.createPercentValue(100))
                     .setHorizontalAlignment(HorizontalAlignment.RIGHT);
@@ -179,40 +290,55 @@ public class WorkloadReportGenerator {
             summary.addCell("Optymalne").addCell(String.valueOf(optimal));
 
             document.add(summary);
-
-            logger.info("Report successfully generated: {}", outputPath);
-        } catch (Exception e) {
-            logger.error("Error generating report: {}", e.getMessage(), e);
-            throw e;
         }
     }
 
-    /* ======  METODY POMOCNICZE  =============================================== */
+    /**
+     * Klasa pomocnicza do przechowywania pracownika wraz z jego statusem i średnim obciążeniem tygodniowym.
+     */
+    private record EmployeeWithStatus(EmployeeWorkload employee, double weeklyAverage, String status) {}
 
     /**
-     * Loads workload data for the specified period and positions.
-     * This method should be overridden in production to fetch actual data.
+     * Filtruje dane o obciążeniu pracowników według wybranych stanowisk i okresu.
      *
-     * @param start Start date
-     * @param end End date
-     * @param positions List of positions to include
-     * @return List of employee workload records
+     * @param start Data początkowa okresu
+     * @param end Data końcowa okresu
+     * @param positions Lista stanowisk do uwzględnienia
+     * @param allWorkloadData Wszystkie dostępne dane o obciążeniu pracowników
+     * @return Przefiltrowana lista danych o obciążeniu pracowników
+     * @throws NoDataException Gdy brak danych po filtrowaniu
      */
-    protected List<EmployeeWorkload> loadWorkloadData(LocalDate start, LocalDate end, List<String> positions) {
-        logger.debug("Loading workload data for period {} to {}, positions: {}", start, end, positions);
-        // This is a placeholder - in a real implementation, this would fetch data from a database
-        return List.of(
-                new EmployeeWorkload("Jan Kowalski", "Sprzedaż", 15, 175),
-                new EmployeeWorkload("Anna Nowak", "Magazyn", 8, 95),
-                new EmployeeWorkload("Piotr Wiśniewski", "IT", 12, 140)
-        );
+    public List<EmployeeWorkload> loadWorkloadData(
+            LocalDate start,
+            LocalDate end,
+            List<String> positions,
+            List<EmployeeWorkload> allWorkloadData) throws NoDataException {
+
+        if (allWorkloadData == null || allWorkloadData.isEmpty()) {
+            throw new NoDataException("Brak danych do wygenerowania raportu.");
+        }
+
+        List<EmployeeWorkload> filteredData;
+        if (positions != null && !positions.isEmpty()) {
+            filteredData = allWorkloadData.stream()
+                    .filter(employee -> positions.contains(employee.department()))
+                    .toList();
+        } else {
+            filteredData = allWorkloadData;
+        }
+
+        if (filteredData.isEmpty()) {
+            throw new NoDataException("Brak danych dla wybranych stanowisk.");
+        }
+
+        return filteredData;
     }
 
     /**
-     * Adds a header row to a table.
+     * Dodaje wiersz nagłówkowy do tabeli.
      *
-     * @param t The table to add the header to
-     * @param labels The header cell labels
+     * @param t Tabela, do której dodawany jest nagłówek
+     * @param labels Etykiety komórek nagłówka
      */
     private void addHeader(Table t, String... labels) {
         for (String l : labels) {
@@ -222,20 +348,23 @@ public class WorkloadReportGenerator {
     }
 
     /**
-     * Determines the workload status based on hours worked.
+     * Określa status obciążenia pracownika na podstawie średniej tygodniowej liczby godzin.
      *
-     * @param hours Number of hours worked
-     * @return Status description (Przeciążenie, Niedociążenie, or Optymalne)
+     * @param weeklyHours Średnia tygodniowa liczba godzin
+     * @return Status obciążenia (Przeciążenie, Niedociążenie lub Optymalne)
      */
-    private String getWorkloadStatus(double hours) {
-        if (hours > upperThreshold) return "Przeciążenie";
-        if (hours < lowerThreshold) return "Niedociążenie";
+    private String getWorkloadStatus(double weeklyHours) {
+        if (weeklyHours > maxWeeklyNorm) return "Przeciążenie";
+        if (weeklyHours < minWeeklyNorm) return "Niedociążenie";
         return "Optymalne";
     }
 
     /**
-     * Record representing employee workload data.
+     * Rekord reprezentujący dane o obciążeniu pracownika.
+     *
+     * @param employeeName Identyfikator/nazwa pracownika
+     * @param department Stanowisko/dział pracownika
+     * @param totalHours Całkowita liczba przepracowanych godzin
      */
-    public record EmployeeWorkload(String employeeName, String department,
-                                   int taskCount, double totalHours) {}
+    public record EmployeeWorkload(String employeeName, String department, double totalHours) {}
 }
