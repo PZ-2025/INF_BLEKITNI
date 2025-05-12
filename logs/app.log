@@ -1,3 +1,7 @@
 2025-05-07 13:29:57 INFO  org.example.pdflib.WorkloadReportGenerator - Rozpoczynanie generowania raportu: C:/Raporty/test_report.pdf
 2025-05-07 13:29:57 INFO  org.example.pdflib.WorkloadReportGenerator - Utworzono katalog: C:\Raporty
 2025-05-07 13:29:58 INFO  org.example.pdflib.WorkloadReportGenerator - Raport został pomyślnie zapisany do: C:/Raporty/test_report.pdf
+2025-05-12 22:13:16 WARN  com.itextpdf.layout.renderer.TableRenderer - Last row is not completed. Table bottom border may collapse as you do not expect it
+2025-05-12 22:16:14 WARN  com.itextpdf.layout.renderer.TableRenderer - Last row is not completed. Table bottom border may collapse as you do not expect it
+2025-05-12 22:16:14 WARN  com.itextpdf.layout.renderer.TableRenderer - Last row is not completed. Table bottom border may collapse as you do not expect it
+2025-05-12 22:16:14 WARN  com.itextpdf.layout.renderer.TableRenderer - Last row is not completed. Table bottom border may collapse as you do not expect it
