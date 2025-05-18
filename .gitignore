@@ -39,3 +39,9 @@ build/
 
 # Ignoruj plik z danymi do logowania
 PASS.txt
+
+# Ignoruj plik ze ściężką do zapisu raportów
+config.properties
+
+# Ignoruj katalog z kopiami zapasowymi
+backups/
