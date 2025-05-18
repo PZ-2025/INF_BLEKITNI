@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS Wnioski_o_nieobecnosc (
     Data_rozpoczecia   DATE,
     Data_zakonczenia   DATE,
     Opis               TEXT,
+    Status             VARCHAR(50) DEFAULT 'Oczekuje',
     Id_pracownika      INT,
     FOREIGN KEY (Id_pracownika) REFERENCES Pracownicy(Id) ON DELETE CASCADE
 );
