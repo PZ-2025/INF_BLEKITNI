@@ -1,44 +1,112 @@
+/*
+ * Classname: Order
+ * Version information: 1.0
+ * Date: 2025-05-16
+ * Copyright notice: © BŁĘKITNI
+ */
+
+
 package org.example.sys;
 
-public class Order {
-    private int id;
-    private String productName;
-    private int quantity;
-    private String supplier;
-    private String orderDate;
-    private String status;
+import jakarta.persistence.*;
 
-    public Order(int id, String productName, int quantity, String supplier, String orderDate, String status) {
-        this.id = id;
-        this.productName = productName;
-        this.quantity = quantity;
-        this.supplier = supplier;
-        this.orderDate = orderDate;
-        this.status = status;
+import java.math.BigDecimal;
+import java.util.Date;
+
+@Entity
+@Table(name = "Zamowienia")
+@Access(AccessType.FIELD)
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "Id")
+    private int id;
+
+    @ManyToOne
+    @JoinColumn(name = "Id_produktu", nullable = false)
+    private Warehouse produkt;
+
+    @ManyToOne
+    @JoinColumn(name = "Id_pracownika", nullable = false)
+    private Employee pracownik;
+
+    @Column(name = "Ilosc", nullable = false)
+    private int ilosc;
+
+    @Column(name = "Cena", nullable = false, precision = 10, scale = 2)
+    private BigDecimal cena;
+
+    @Temporal(TemporalType.DATE)
+    @Column(name = "Data", nullable = false)
+    private Date data;
+
+    public Order() {
     }
 
-    // Gettery i settery
+    public Order(Warehouse produkt, Employee pracownik, int ilosc, BigDecimal cena, Date data) {
+        this.produkt = produkt;
+        this.pracownik = pracownik;
+        this.ilosc = ilosc;
+        this.cena = cena;
+        this.data = data;
+    }
+
+    // === Gettery i settery ===
+
     public int getId() {
         return id;
     }
 
-    public String getProductName() {
-        return productName;
+    public Warehouse getProdukt() {
+        return produkt;
     }
 
-    public int getQuantity() {
-        return quantity;
+    public void setProdukt(Warehouse produkt) {
+        this.produkt = produkt;
     }
 
-    public String getSupplier() {
-        return supplier;
+    public Employee getPracownik() {
+        return pracownik;
     }
 
-    public String getOrderDate() {
-        return orderDate;
+    public void setPracownik(Employee pracownik) {
+        this.pracownik = pracownik;
     }
 
-    public String getStatus() {
-        return status;
+    public int getIlosc() {
+        return ilosc;
+    }
+
+    public void setIlosc(int ilosc) {
+        this.ilosc = ilosc;
+    }
+
+    public BigDecimal getCena() {
+        return cena;
+    }
+
+    public void setCena(BigDecimal cena) {
+        this.cena = cena;
+    }
+
+    public Date getData() {
+        return data;
+    }
+
+    public void setData(Date data) {
+        this.data = data;
+    }
+
+    @Override
+    public String toString() {
+        return "Order{" +
+                "id=" + id +
+                ", produkt=" + (produkt != null ? produkt.getNazwa() : "null") +
+                ", pracownik=" + (pracownik != null ? pracownik.getLogin() : "null") +
+                ", ilosc=" + ilosc +
+                ", cena=" + cena +
+                ", data=" + data +
+                '}';
     }
 }

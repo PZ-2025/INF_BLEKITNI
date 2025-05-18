@@ -32,6 +32,7 @@ public class LogisticianPanel {
     private BorderPane root;
     private Stage primaryStage;
     private LogisticianPanelController controller;
+    private Image logoImage;
 
     /**
      * Konstruktor klasy LogisticianPanel.
@@ -43,6 +44,11 @@ public class LogisticianPanel {
         primaryStage.setMinWidth(700);
         primaryStage.setMinHeight(450);
         this.controller = new LogisticianPanelController(this);
+
+        logoImage = new Image(Objects.requireNonNull(
+                getClass().getResourceAsStream("/logo.png")
+        ));
+        primaryStage.getIcons().add(logoImage);
 
         primaryStage.setTitle("Panel logistyka");
 

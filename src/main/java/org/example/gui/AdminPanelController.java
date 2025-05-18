@@ -1,34 +1,46 @@
 /*
  * Classname: AdminPanelController
- * Version information: 1.1
- * Date: 2025-04-27
+ * Version information: 1.3
+ * Date: 2025-05-18
  * Copyright notice: © BŁĘKITNI
  */
 
 package org.example.gui;
 
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.CacheHint;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import org.example.database.TechnicalIssueRepository;
 import org.example.database.UserRepository;
 import org.example.pdflib.ConfigManager;
 import org.example.pdflib.ReportGenerator;
 import org.example.sys.Employee;
+import org.example.sys.TechnicalIssue;
+import org.example.wyjatki.PasswordException;
+import org.example.wyjatki.SalaryException;
+
+import java.io.File;
 import javafx.scene.layout.GridPane;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.io.File;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Kontroler odpowiedzialny za obsługę logiki
  * interfejsu administratora w aplikacji GUI.
+ * Zoptymalizowana wersja z asynchronicznym ładowaniem danych.
  */
 public class AdminPanelController {
 
@@ -36,6 +48,17 @@ public class AdminPanelController {
     private final Stage primaryStage;
     private final UserRepository userRepository;
     private TableView<Employee> tableView;
+    private final TechnicalIssueRepository technicalIssueRepository;
+    private TableView<TechnicalIssue> issuesTableView;
+
+    // Executor do operacji asynchronicznych
+    private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+
+    // Cache widoków dla lepszej wydajności
+    private VBox userManagementView;
+    private VBox configPanelView;
+    private VBox reportsPanelView;
+    private VBox issuesPanelView;
 
     /**
      * Konstruktor klasy kontrolera.
@@ -46,12 +69,69 @@ public class AdminPanelController {
         this.adminPanel = adminPanel;
         this.primaryStage = adminPanel.getPrimaryStage();
         this.userRepository = new UserRepository();
+        this.technicalIssueRepository = new TechnicalIssueRepository();
     }
 
     /**
      * Wyświetla panel zarządzania użytkownikami.
      */
     public void showUserManagement() {
+        if (userManagementView == null) {
+            // Pokaż wskaźnik ładowania
+            showLoadingIndicator();
+
+            // Utwórz widok asynchronicznie
+            Task<VBox> task = new Task<>() {
+                @Override
+                protected VBox call() throws Exception {
+                    return createUserManagementView();
+                }
+            };
+
+            task.setOnSucceeded(e -> {
+                userManagementView = task.getValue();
+                adminPanel.setCenterPane(userManagementView);
+                // Załaduj dane pracowników asynchronicznie
+                odswiezListePracownikow();
+            });
+
+            task.setOnFailed(e -> {
+                task.getException().printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Błąd", "Nie udało się załadować panelu użytkowników");
+            });
+
+            executor.execute(task);
+        } else {
+            // Jeśli widok już istnieje, po prostu go pokaż
+            adminPanel.setCenterPane(userManagementView);
+            // Odśwież dane
+            odswiezListePracownikow();
+        }
+    }
+
+    /**
+     * Wyświetla wskaźnik ładowania podczas operacji asynchronicznych.
+     */
+    private void showLoadingIndicator() {
+        VBox loadingBox = new VBox(10);
+        loadingBox.setAlignment(Pos.CENTER);
+
+        ProgressIndicator progress = new ProgressIndicator();
+        progress.setMaxSize(50, 50);
+
+        Label loadingLabel = new Label("Ładowanie...");
+        loadingLabel.setStyle("-fx-font-size: 14px;");
+
+        loadingBox.getChildren().addAll(progress, loadingLabel);
+        adminPanel.setCenterPane(loadingBox);
+    }
+
+    /**
+     * Tworzy widok zarządzania użytkownikami.
+     *
+     * @return VBox zawierający kompletny widok
+     */
+    private VBox createUserManagementView() {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
 
@@ -59,8 +139,9 @@ public class AdminPanelController {
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         tableView = new TableView<>();
+        configureTableView();
 
-        // === Poprawione nazwy pól zgodnie z getterami ===
+        // Kolumny tabeli
         TableColumn<Employee, String> nameCol = new TableColumn<>("Imię");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
 
@@ -87,9 +168,7 @@ public class AdminPanelController {
                 loginCol, emailCol, stanowiskoCol, zarobkiCol
         );
 
-        odswiezListePracownikow();
-
-        // === Przyciski ===
+        // Przyciski
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER);
 
@@ -106,7 +185,21 @@ public class AdminPanelController {
         );
 
         layout.getChildren().addAll(titleLabel, tableView, buttonBox);
-        adminPanel.setCenterPane(layout);
+        return layout;
+    }
+
+    /**
+     * Konfiguruje TableView dla lepszej wydajności.
+     */
+    private void configureTableView() {
+        // Ustawienie wirtualizacji dla lepszej wydajności
+        tableView.setFixedCellSize(25); // Stała wysokość komórek
+        tableView.setCache(true);
+        tableView.setCacheHint(CacheHint.SPEED);
+
+        // Ograniczenie liczby wierszy ładowanych jednocześnie
+        int rowsToShow = 20;
+        tableView.setPrefHeight(rowsToShow * tableView.getFixedCellSize() + 30); // +30 na nagłówek
     }
 
     /**
@@ -168,6 +261,7 @@ public class AdminPanelController {
 
         saveButton.setOnAction(e -> {
             try {
+                /* walidacja pustych pól – jak wcześniej */
                 if (nameField.getText().isEmpty()
                         || surnameField.getText().isEmpty()
                         || loginField.getText().isEmpty()
@@ -175,54 +269,63 @@ public class AdminPanelController {
                         || stanowiskoBox.getValue() == null
                         || ageField.getText().isEmpty()
                         || salaryField.getText().isEmpty()) {
-                    showAlert(
-                            Alert.AlertType.WARNING,
-                            "Brak danych",
-                            "Uzupełnij wszystkie pola (poza hasłem)."
-                    );
+                    showAlert(Alert.AlertType.WARNING, "Brak danych",
+                            "Uzupełnij wszystkie pola (poza hasłem).");
                     return;
                 }
 
-                selected.setName(nameField.getText());
-                selected.setSurname(surnameField.getText());
-                selected.setLogin(loginField.getText());
-                selected.setEmail(emailField.getText());
+                showLoadingIndicator();
+
+                final Employee employeeToUpdate = selected;
+                employeeToUpdate.setName(nameField.getText());
+                employeeToUpdate.setSurname(surnameField.getText());
+                employeeToUpdate.setLogin(loginField.getText());
+                employeeToUpdate.setEmail(emailField.getText());
 
                 if (!passwordField.getText().isEmpty()) {
-                    selected.setPassword(passwordField.getText());
+                    employeeToUpdate.setPassword(passwordField.getText()); // PasswordException
                 }
 
-                selected.setStanowisko(stanowiskoBox.getValue());
-                selected.setAge(
-                        Integer.parseInt(ageField.getText())
-                );
-                selected.setZarobki(
-                        new BigDecimal(salaryField.getText())
-                );
+                employeeToUpdate.setStanowisko(stanowiskoBox.getValue());
+                employeeToUpdate.setAge(Integer.parseInt(ageField.getText()));
+                employeeToUpdate.setZarobki(new BigDecimal(salaryField.getText())); // SalaryException
 
-                userRepository.aktualizujPracownika(selected);
+                Task<Void> updateTask = new Task<>() {
+                    @Override
+                    protected Void call() throws Exception {
+                        userRepository.aktualizujPracownika(employeeToUpdate);
+                        return null;
+                    }
+                };
 
-                showAlert(
-                        Alert.AlertType.INFORMATION,
-                        "Sukces",
-                        "Dane użytkownika zostały zaktualizowane."
-                );
-                showUserManagement();
+                updateTask.setOnSucceeded(evt -> {
+                    showAlert(Alert.AlertType.INFORMATION, "Sukces",
+                            "Dane użytkownika zostały zaktualizowane.");
+                    showUserManagement();
+                });
+
+                updateTask.setOnFailed(evt -> {
+                    updateTask.getException().printStackTrace();
+                    showAlert(Alert.AlertType.ERROR, "Błąd",
+                            "Wystąpił błąd podczas zapisywania zmian: "
+                                    + updateTask.getException().getMessage());
+                    showUserManagement();
+                });
+
+                executor.execute(updateTask);
 
             } catch (NumberFormatException ex) {
-                showAlert(
-                        Alert.AlertType.ERROR,
-                        "Błąd",
-                        "Nieprawidłowy format wieku lub zarobków!"
-                );
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                showAlert(
-                        Alert.AlertType.ERROR,
-                        "Błąd",
-                        "Wystąpił błąd podczas zapisywania zmian: "
-                                + ex.getMessage()
-                );
+                showAlert(Alert.AlertType.ERROR, "Błąd",
+                        "Nieprawidłowy format wieku lub zarobków!");
+                showUserManagement();
+            } catch (PasswordException ex) {
+                showAlert(Alert.AlertType.ERROR, "Nieprawidłowe hasło",
+                        ex.getMessage());
+                showUserManagement();
+            } catch (SalaryException ex) {
+                showAlert(Alert.AlertType.ERROR, "Nieprawidłowe zarobki",
+                        ex.getMessage());
+                showUserManagement();
             }
         });
 
@@ -230,13 +333,31 @@ public class AdminPanelController {
     }
 
     /**
-     * Pobiera dane z bazy i ładuje do tabeli.
+     * Pobiera dane z bazy i ładuje do tabeli asynchronicznie.
      */
     private void odswiezListePracownikow() {
-        tableView.getItems().clear();
-        tableView.getItems().addAll(
-                userRepository.pobierzWszystkichPracownikow()
-        );
+        Task<List<Employee>> task = new Task<>() {
+            @Override
+            protected List<Employee> call() throws Exception {
+                return userRepository.pobierzWszystkichPracownikow();
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            tableView.getItems().clear();
+            tableView.getItems().addAll(task.getValue());
+        });
+
+        task.setOnFailed(e -> {
+            task.getException().printStackTrace();
+            Platform.runLater(() -> showAlert(
+                    Alert.AlertType.ERROR,
+                    "Błąd",
+                    "Nie udało się pobrać listy pracowników"
+            ));
+        });
+
+        executor.execute(task);
     }
 
     /**
@@ -292,6 +413,7 @@ public class AdminPanelController {
 
         saveButton.setOnAction(e -> {
             try {
+                /* walidacja pustych pól – jak wcześniej */
                 if (nameField.getText().isEmpty()
                         || surnameField.getText().isEmpty()
                         || loginField.getText().isEmpty()
@@ -300,52 +422,63 @@ public class AdminPanelController {
                         || stanowiskoBox.getValue() == null
                         || ageField.getText().isEmpty()
                         || salaryField.getText().isEmpty()) {
-                    showAlert(
-                            Alert.AlertType.WARNING,
-                            "Brak danych",
-                            "Uzupełnij wszystkie pola!"
-                    );
+                    showAlert(Alert.AlertType.WARNING, "Brak danych",
+                            "Uzupełnij wszystkie pola!");
                     return;
                 }
 
-                int wiek = Integer.parseInt(ageField.getText());
-                BigDecimal zarobki = new BigDecimal(
-                        salaryField.getText()
-                );
+                showLoadingIndicator();
+
+                int         wiek     = Integer.parseInt(ageField.getText());
+                BigDecimal  zarobki  = new BigDecimal(salaryField.getText());
 
                 Employee nowy = new Employee();
                 nowy.setName(nameField.getText());
                 nowy.setSurname(surnameField.getText());
                 nowy.setLogin(loginField.getText());
-                nowy.setPassword(passwordField.getText());
+                /* --- tu mogły wylecieć wyjątki --- */
+                nowy.setPassword(passwordField.getText());   // PasswordException
                 nowy.setEmail(emailField.getText());
                 nowy.setStanowisko(stanowiskoBox.getValue());
                 nowy.setAge(wiek);
-                nowy.setZarobki(zarobki);
+                nowy.setZarobki(zarobki);                    // SalaryException
 
-                userRepository.dodajPracownika(nowy);
+                Task<Void> addTask = new Task<>() {
+                    @Override
+                    protected Void call() throws Exception {
+                        userRepository.dodajPracownika(nowy);
+                        return null;
+                    }
+                };
 
-                showAlert(
-                        Alert.AlertType.INFORMATION,
-                        "Sukces",
-                        "Dodano nowego użytkownika!"
-                );
-                showUserManagement();
+                addTask.setOnSucceeded(evt -> {
+                    showAlert(Alert.AlertType.INFORMATION, "Sukces",
+                            "Dodano nowego użytkownika!");
+                    showUserManagement();
+                });
+
+                addTask.setOnFailed(evt -> {
+                    addTask.getException().printStackTrace();
+                    showAlert(Alert.AlertType.ERROR, "Błąd",
+                            "Nie udało się dodać użytkownika: "
+                                    + addTask.getException().getMessage());
+                    showUserManagement();   // usuwa ekran ładowania
+                });
+
+                executor.execute(addTask);
 
             } catch (NumberFormatException ex) {
-                showAlert(
-                        Alert.AlertType.ERROR,
-                        "Błąd",
-                        "Nieprawidłowy format wieku lub zarobków!"
-                );
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                showAlert(
-                        Alert.AlertType.ERROR,
-                        "Błąd",
-                        "Nie udało się dodać użytkownika: "
-                                + ex.getMessage()
-                );
+                showAlert(Alert.AlertType.ERROR, "Błąd",
+                        "Nieprawidłowy format wieku lub zarobków!");
+                showUserManagement();
+            } catch (PasswordException ex) {
+                showAlert(Alert.AlertType.ERROR, "Nieprawidłowe hasło",
+                        ex.getMessage());
+                showUserManagement();
+            } catch (SalaryException ex) {
+                showAlert(Alert.AlertType.ERROR, "Nieprawidłowe zarobki",
+                        ex.getMessage());
+                showUserManagement();
             }
         });
 
@@ -353,29 +486,77 @@ public class AdminPanelController {
     }
 
     /**
-     * Usuwa zaznaczonego użytkownika.
+     * Usuwa zaznaczonego użytkownika asynchronicznie.
+     */
+    /**
+     * Usuwa zaznaczonego użytkownika asynchronicznie.
+     * Zabezpiecza przed usunięciem użytkownika z rolą "root".
      */
     private void usunWybranegoUzytkownika() {
-        Employee selected = tableView.getSelectionModel()
-                .getSelectedItem();
+        Employee selected = tableView.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            try {
-                userRepository.usunPracownika(selected);
-                odswiezListePracownikow();
-                showAlert(
-                        Alert.AlertType.INFORMATION,
-                        "Sukces",
-                        "Usunięto użytkownika!"
-                );
-            } catch (Exception e) {
+            // Sprawdź, czy pracownik ma rolę "root"
+            if ("root".equalsIgnoreCase(selected.getStanowisko())) {
                 showAlert(
                         Alert.AlertType.ERROR,
-                        "Błąd",
-                        "Nie udało się usunąć użytkownika: "
-                                + e.getMessage()
+                        "Operacja niedozwolona",
+                        "Nie można usunąć użytkownika z rolą root"
                 );
-                e.printStackTrace();
+                return;
             }
+
+            // Pokaż potwierdzenie
+            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmAlert.setTitle("Potwierdzenie");
+            confirmAlert.setHeaderText("Czy na pewno chcesz usunąć tego użytkownika?");
+            confirmAlert.setContentText("Ta operacja jest nieodwracalna.");
+
+            confirmAlert.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.OK) {
+                    // Pokaż wskaźnik ładowania
+                    showLoadingIndicator();
+
+                    // Usuń asynchronicznie
+                    final Employee employeeToDelete = selected;
+                    Task<Void> deleteTask = new Task<>() {
+                        @Override
+                        protected Void call() throws Exception {
+                            userRepository.usunPracownika(employeeToDelete);
+                            return null;
+                        }
+                    };
+
+                    deleteTask.setOnSucceeded(e -> {
+                        showAlert(
+                                Alert.AlertType.INFORMATION,
+                                "Sukces",
+                                "Usunięto użytkownika!"
+                        );
+                        showUserManagement();
+                    });
+
+                    deleteTask.setOnFailed(e -> {
+                        Throwable exception = deleteTask.getException();
+                        if (exception instanceof SecurityException) {
+                            Platform.runLater(() -> showAlert(
+                                    Alert.AlertType.ERROR,
+                                    "Operacja niedozwolona",
+                                    exception.getMessage()
+                            ));
+                        } else {
+                            exception.printStackTrace();
+                            Platform.runLater(() -> showAlert(
+                                    Alert.AlertType.ERROR,
+                                    "Błąd",
+                                    "Nie udało się usunąć użytkownika: " + exception.getMessage()
+                            ));
+                        }
+                        showUserManagement();
+                    });
+
+                    executor.execute(deleteTask);
+                }
+            });
         } else {
             showAlert(
                     Alert.AlertType.WARNING,
@@ -387,41 +568,63 @@ public class AdminPanelController {
 
     /**
      * Wyświetla panel ustawień konfiguracyjnych systemu.
+     * Tworzenie węzłów odbywa się na wątku JavaFX – brak konfliktów z toolkitem.
      */
     public void showConfigPanel() {
+        if (configPanelView == null) {
+            // bez asynchronicznego Task – budowa UI jest lekka
+            configPanelView = createConfigPanelView();
+        }
+        adminPanel.setCenterPane(configPanelView);
+    }
+
+    /**
+     * Tworzy widok panelu konfiguracji.
+     *
+     * @return VBox zawierający kompletny widok
+     */
+    /**
+     * Buduje widok panelu konfiguracji.
+     */
+    private VBox createConfigPanelView() {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
 
         Label titleLabel = new Label("Opcje konfiguracyjne");
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
+        // bezpieczne pobieranie wartości z ConfigManager
+        boolean loggingEnabled;
+        boolean notificationsEnabled;
+        try {
+            loggingEnabled       = ConfigManager.isLoggingEnabled();
+            notificationsEnabled = ConfigManager.isNotificationsEnabled();
+        } catch (Exception ex) {
+            // gdyby plik properties był uszkodzony
+            loggingEnabled = false;
+            notificationsEnabled = false;
+        }
+
         CheckBox logsCheckbox = new CheckBox("Włącz logi systemowe");
-        logsCheckbox.setSelected(ConfigManager.isLoggingEnabled());
+        logsCheckbox.setSelected(loggingEnabled);
 
         CheckBox notificationsCheckbox = new CheckBox("Włącz powiadomienia");
-        notificationsCheckbox.setSelected(ConfigManager.isNotificationsEnabled());
+        notificationsCheckbox.setSelected(notificationsEnabled);
 
         Button configurePDF = new Button("Konfiguruj raporty PDF");
         configurePDF.setOnAction(e -> showPDFConfigPanel());
 
         Button backupButton = new Button("Wykonaj backup bazy danych");
-        backupButton.setStyle(
-                "-fx-background-color: #27AE60; "
-                        + "-fx-text-fill: white;"
-        );
+        backupButton.setStyle("-fx-background-color: #27AE60; -fx-text-fill: white;");
         backupButton.setOnAction(e -> performDatabaseBackup());
 
         Button saveButton = new Button("Zapisz");
         saveButton.setStyle("-fx-background-color: #3498DB; -fx-text-fill: white;");
         saveButton.setOnAction(e -> {
-            // zapis do ConfigManager i pliku app.properties
             ConfigManager.setLoggingEnabled(logsCheckbox.isSelected());
             ConfigManager.setNotificationsEnabled(notificationsCheckbox.isSelected());
-            showAlert(
-                    Alert.AlertType.INFORMATION,
-                    "Zapisano",
-                    "Ustawienia zostały zachowane."
-            );
+            showAlert(Alert.AlertType.INFORMATION, "Zapisano",
+                    "Ustawienia zostały zachowane.");
         });
 
         layout.getChildren().addAll(
@@ -433,7 +636,7 @@ public class AdminPanelController {
                 saveButton
         );
 
-        adminPanel.setCenterPane(layout);
+        return layout;
     }
 
     /**
@@ -476,11 +679,20 @@ public class AdminPanelController {
      * Wyświetla panel generowania raportów.
      */
     public void showReportsPanel() {
+        if (reportsPanelView == null) {
+            reportsPanelView = createReportsPanelView();
+        }
+        adminPanel.setCenterPane(reportsPanelView);
+    }
+
+    /**
+     * Buduje (synchronnie) widok panelu raportów.
+     */
+    private VBox createReportsPanelView() {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
 
-        Label titleLabel = new Label("Wybierz rodzaj raportu i zakres dat");
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        Label titleLabel = new Label("Wybierz rodzaj raportu");
 
         ComboBox<String> reportType = new ComboBox<>();
         reportType.getItems().addAll(
@@ -500,14 +712,14 @@ public class AdminPanelController {
         generateButton.setStyle("-fx-background-color: #3498DB; -fx-text-fill: white;");
         generateButton.setOnAction(e -> {
             String selected = reportType.getValue();
-            LocalDate from = startDatePicker.getValue();
-            LocalDate to   = endDatePicker.getValue();
+            LocalDate from  = startDatePicker.getValue();
+            LocalDate to    = endDatePicker.getValue();
 
             if (selected == null || from == null || to == null) {
-                showAlert(Alert.AlertType.WARNING, "Brak danych", "Wybierz typ raportu oraz zakres dat.");
+                showAlert(Alert.AlertType.WARNING, "Brak danych",
+                        "Wybierz typ raportu oraz zakres dat.");
                 return;
             }
-
             showFilterDialogForReport(selected, from, to);
         });
 
@@ -519,58 +731,308 @@ public class AdminPanelController {
                 generateButton
         );
 
-        adminPanel.setCenterPane(layout);
+        return layout;
     }
 
 
     /**
-     * Wyświetla panel zgłoszeń.
+     * Wyświetla panel zgłoszeń technicznych.
      */
     public void showIssuesPanel() {
+        if (issuesPanelView == null) {
+            // Pokaż wskaźnik ładowania
+            showLoadingIndicator();
+
+            // Utwórz widok asynchronicznie
+            Task<VBox> task = new Task<>() {
+                @Override
+                protected VBox call() throws Exception {
+                    return createIssuesPanelView();
+                }
+            };
+
+            task.setOnSucceeded(e -> {
+                issuesPanelView = task.getValue();
+                adminPanel.setCenterPane(issuesPanelView);
+                // Załaduj dane zgłoszeń asynchronicznie
+                refreshIssuesTable((TableView<TechnicalIssue>) issuesPanelView.lookup("#issuesTableView"));
+            });
+
+            task.setOnFailed(e -> {
+                task.getException().printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Błąd", "Nie udało się załadować panelu zgłoszeń");
+            });
+
+            executor.execute(task);
+        } else {
+            // Jeśli widok już istnieje, po prostu go pokaż
+            adminPanel.setCenterPane(issuesPanelView);
+            // Odśwież dane zgłoszeń
+            refreshIssuesTable((TableView<TechnicalIssue>) issuesPanelView.lookup("#issuesTableView"));
+        }
+    }
+
+    /**
+     * Tworzy widok panelu zgłoszeń.
+     *
+     * @return VBox zawierający kompletny widok
+     */
+    private VBox createIssuesPanelView() {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
-
-        Label titleLabel = new Label("Lista zgłoszeń");
+        Label titleLabel = new Label("Lista zgłoszeń technicznych");
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
-        TableView<String> tableView = new TableView<>();
-        tableView.setMinHeight(200);
+        // Tabela zgłoszeń
+        TableView<TechnicalIssue> issuesTableView = new TableView<>();
+        issuesTableView.setId("issuesTableView"); // ID do późniejszego wyszukiwania
+        issuesTableView.setMinHeight(200);
 
-        Button detailsButton = new Button("Szczegóły zgłoszenia");
+        // Optymalizacja tabeli
+        issuesTableView.setFixedCellSize(25);
+        issuesTableView.setCache(true);
+        issuesTableView.setCacheHint(CacheHint.SPEED);
 
-        layout.getChildren().addAll(
-                titleLabel,
-                tableView,
-                detailsButton
+        TableColumn<TechnicalIssue, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+
+        TableColumn<TechnicalIssue, String> typeCol = new TableColumn<>("Typ");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("type"));
+
+        TableColumn<TechnicalIssue, LocalDate> dateCol = new TableColumn<>("Data zgłoszenia");
+        dateCol.setCellValueFactory(new PropertyValueFactory<>("dateSubmitted"));
+
+        TableColumn<TechnicalIssue, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            private final ComboBox<String> comboBox = new ComboBox<>();
+            {
+                comboBox.getItems().addAll("Nowe", "W trakcie", "Rozwiązane");
+                comboBox.setOnAction(e -> {
+                    if (getTableRow() != null && getTableRow().getItem() != null) {
+                        TechnicalIssue issue = getTableRow().getItem();
+                        String newStatus = comboBox.getValue();
+
+                        // Aktualizuj status asynchronicznie
+                        Task<Void> updateTask = new Task<>() {
+                            @Override
+                            protected Void call() throws Exception {
+                                issue.setStatus(newStatus);
+                                technicalIssueRepository.aktualizujZgloszenie(issue);
+                                return null;
+                            }
+                        };
+
+                        executor.execute(updateTask);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                } else {
+                    comboBox.setValue(getTableRow().getItem().getStatus());
+                    setGraphic(comboBox);
+                }
+            }
+        });
+
+        issuesTableView.getColumns().addAll(idCol, typeCol, dateCol, statusCol);
+
+        // Dodaj przycisk do wyświetlania szczegółów
+        Button detailsButton = new Button("Pokaż szczegóły");
+        detailsButton.setOnAction(e -> showIssueDetails(issuesTableView));
+
+        // Dodaj przycisk do odświeżania listy
+        Button refreshButton = new Button("Odśwież listę");
+        refreshButton.setOnAction(e -> refreshIssuesTable(issuesTableView));
+
+        HBox buttonBox = new HBox(10, detailsButton, refreshButton);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        layout.getChildren().addAll(titleLabel, issuesTableView, buttonBox);
+        return layout;
+    }
+
+    /**
+     * Odświeża listę zgłoszeń technicznych asynchronicznie.
+     */
+    private void refreshIssuesTable(TableView<TechnicalIssue> tableView) {
+        Task<List<TechnicalIssue>> task = new Task<>() {
+            @Override
+            protected List<TechnicalIssue> call() throws Exception {
+                return technicalIssueRepository.pobierzWszystkieZgloszenia();
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            tableView.getItems().clear();
+            tableView.getItems().addAll(task.getValue());
+        });
+
+        task.setOnFailed(e -> {
+            task.getException().printStackTrace();
+            Platform.runLater(() -> showAlert(
+                    Alert.AlertType.ERROR,
+                    "Błąd",
+                    "Nie udało się pobrać listy zgłoszeń"
+            ));
+        });
+
+        executor.execute(task);
+    }
+
+    /**
+     * Wyświetla szczegóły wybranego zgłoszenia.
+     */
+    private void showIssueDetails(TableView<TechnicalIssue> tableView) {
+        TechnicalIssue selected = tableView.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert(Alert.AlertType.WARNING, "Brak wyboru", "Wybierz zgłoszenie do wyświetlenia.");
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Szczegóły zgłoszenia");
+        alert.setHeaderText("Zgłoszenie ID: " + selected.getId());
+        alert.setContentText(
+                "Typ: " + selected.getType() + "\n" +
+                        "Opis: " + selected.getDescription() + "\n" +
+                        "Data zgłoszenia: " + selected.getDateSubmitted() + "\n" +
+                        "Pracownik ID: " + selected.getEmployee().getId() + "\n" +
+                        "Status: " + selected.getStatus()
         );
-
-        adminPanel.setCenterPane(layout);
+        alert.showAndWait();
     }
 
     /**
      * Wylogowuje użytkownika i uruchamia okno logowania.
      */
     public void logout() {
-        primaryStage.close();
+        // Zamknij połączenia z bazą danych
+        Task<Void> closeTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                technicalIssueRepository.close();
+                userRepository.close();
+                return null;
+            }
+        };
 
-        Stage loginStage = new Stage();
-        try {
-            new HelloApplication().start(loginStage);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        closeTask.setOnSucceeded(e -> {
+            primaryStage.close();
+            Stage loginStage = new Stage();
+            try {
+                new HelloApplication().start(loginStage);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
+
+        executor.execute(closeTask);
     }
 
     /**
      * Symuluje wykonanie backupu bazy danych.
      */
     private void performDatabaseBackup() {
-        showAlert(
-                Alert.AlertType.INFORMATION,
-                "Backup",
-                "Backup bazy danych został wykonany pomyślnie!"
-        );
-        System.out.println("Backup bazy danych wykonany!");
+        // Pokaż wskaźnik ładowania
+        showLoadingIndicator();
+
+        Task<String> backupTask = new Task<>() {
+            @Override
+            protected String call() throws Exception {
+                String timestamp = java.time.LocalDateTime.now().toString().replace(":", "-");
+                String fileName = "stonkadb-backup-" + timestamp + ".sql";
+
+                File backupDir = new File("backups");
+                if (!backupDir.exists()) {
+                    backupDir.mkdirs();
+                }
+
+                File outputFile = new File(backupDir, fileName);
+
+                // Wykrywanie systemu operacyjnego
+                String os = System.getProperty("os.name").toLowerCase();
+                String mysqldumpPath;
+
+                if (os.contains("win")) {
+                    // Ścieżka dla Windows
+                    mysqldumpPath = "C:\\xampp\\mysql\\bin\\mysqldump.exe";
+                } else if (os.contains("nix") || os.contains("nux") || os.contains("mac")) {
+                    // Ścieżka dla Linux/Unix/Mac
+                    File[] possiblePaths = {
+                            new File("/usr/bin/mysqldump"),
+                            new File("/usr/local/bin/mysqldump"),
+                            new File("/usr/local/mysql/bin/mysqldump"),
+                            new File("/opt/mysql/bin/mysqldump")
+                    };
+
+                    File foundPath = null;
+                    for (File path : possiblePaths) {
+                        if (path.exists()) {
+                            foundPath = path;
+                            break;
+                        }
+                    }
+
+                    if (foundPath != null) {
+                        mysqldumpPath = foundPath.getAbsolutePath();
+                    } else {
+                        mysqldumpPath = "mysqldump";
+                    }
+                } else {
+                    throw new UnsupportedOperationException("Nieobsługiwany system operacyjny: " + os);
+                }
+
+                ProcessBuilder pb = new ProcessBuilder(
+                        mysqldumpPath,
+                        "-u", org.example.database.ILacz.MYSQL_USER,
+                        "--databases", org.example.database.ILacz.DB_NAME
+                );
+
+                String password = org.example.database.ILacz.MYSQL_PASSWORD;
+                if (password != null && !password.isEmpty()) {
+                    Map<String, String> env = pb.environment();
+                    env.put("MYSQL_PWD", password);
+                }
+
+                pb.redirectOutput(outputFile);
+                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+
+                Process process = pb.start();
+                int exitCode = process.waitFor();
+
+                if (exitCode == 0) {
+                    return outputFile.getAbsolutePath();
+                } else {
+                    throw new RuntimeException("Nie udało się wykonać kopii zapasowej. Kod wyjścia: " + exitCode);
+                }
+            }
+        };
+
+        backupTask.setOnSucceeded(e -> {
+            showAlert(
+                    Alert.AlertType.INFORMATION,
+                    "Backup zakończony",
+                    "Plik zapisany:\n" + backupTask.getValue()
+            );
+            showConfigPanel();
+        });
+
+        backupTask.setOnFailed(e -> {
+            backupTask.getException().printStackTrace();
+            showAlert(
+                    Alert.AlertType.ERROR,
+                    "Błąd backupu",
+                    "Wystąpił błąd podczas backupu:\n" + backupTask.getException().getMessage()
+            );
+            showConfigPanel();
+        });
+
+        executor.execute(backupTask);
     }
 
     /**
@@ -580,16 +1042,14 @@ public class AdminPanelController {
      * @param title  tytuł okna
      * @param header treść nagłówka
      */
-    private void showAlert(
-            Alert.AlertType type,
-            String title,
-            String header
-    ) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(header);
-        alert.setContentText(null);
-        alert.showAndWait();
+    private void showAlert(Alert.AlertType type, String title, String header) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(type);
+            alert.setTitle(title);
+            alert.setHeaderText(header);
+            alert.setContentText(null);
+            alert.showAndWait();
+        });
     }
     /**
      * Pokazuje dialog z dodatkowymi filtrami zależnie od raportu.

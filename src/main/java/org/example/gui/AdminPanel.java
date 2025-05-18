@@ -11,8 +11,11 @@ import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.CacheHint;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.image.Image;
@@ -23,27 +26,28 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Klasa reprezentująca główny panel administratora.
  * Tworzy GUI, które zawiera panel nawigacyjny oraz różne widoki zarządzania.
  */
 public class AdminPanel {
-
     private BorderPane root;
     private Stage primaryStage;
     private AdminPanelController controller;
+    private Image logoImage;
+    private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    /**
-     * Tworzy nową instancję panelu administratora.
-     *
-     * @param stage Główna scena aplikacji
-     */
     public AdminPanel(Stage stage) {
         this.primaryStage = stage;
         primaryStage.setMinWidth(700);
         primaryStage.setMinHeight(450);
         this.controller = new AdminPanelController(this);
+
+        // Asynchroniczne ładowanie logo
+        loadLogoAsync();
 
         primaryStage.setTitle("Panel administratora");
 
@@ -52,28 +56,56 @@ public class AdminPanel {
         root.setPadding(new Insets(10));
         root.setStyle("-fx-background-color: lightblue;");
 
-        // Lewy panel nawigacyjny
-        VBox menu = createMenu();
-        root.setLeft(menu);
-
-        // Domyślnie wyświetl widok użytkowników
-        controller.showUserManagement();
-
-        // Animacje po uruchomieniu
-        animateFadeIn(menu, 1000);
-        animateSlideDown(menu, 800);
+        // Lewy panel nawigacyjny - tworzony asynchronicznie
+        createMenuAsync();
 
         // Ustawienie sceny
         Scene scene = new Scene(root, 700, 450);
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Domyślnie wyświetl widok użytkowników - asynchronicznie
+        Platform.runLater(() -> controller.showUserManagement());
     }
 
-    /**
-     * Tworzy panel menu z przyciskami nawigacyjnymi i logo.
-     *
-     * @return VBox zawierający przyciski i logo
-     */
+    private void loadLogoAsync() {
+        Task<Image> task = new Task<>() {
+            @Override
+            protected Image call() throws Exception {
+                return new Image(Objects.requireNonNull(
+                        getClass().getResourceAsStream("/logo.png")
+                ), 100, 100, true, true);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            logoImage = task.getValue();
+            primaryStage.getIcons().add(logoImage);
+        });
+
+        executor.execute(task);
+    }
+
+    private void createMenuAsync() {
+        Task<VBox> task = new Task<>() {
+            @Override
+            protected VBox call() throws Exception {
+                return createMenu();
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            VBox menu = task.getValue();
+            root.setLeft(menu);
+
+            // Animacje po załadowaniu menu
+            animateFadeIn(menu, 1000);
+            animateSlideDown(menu, 800);
+        });
+
+        executor.execute(task);
+    }
+
     private VBox createMenu() {
         VBox menu = new VBox(10);
         menu.setPadding(new Insets(10));
@@ -88,30 +120,26 @@ public class AdminPanel {
         Image image = new Image(
                 Objects.requireNonNull(
                         getClass().getResourceAsStream("/logo.png")
-                )
+                ), 100, 100, true, true
         );
         ImageView logo = new ImageView(image);
         logo.setFitWidth(100);
         logo.setFitHeight(100);
         logo.setPreserveRatio(true);
 
-        // Przycisk zarządzania użytkownikami
+        // Przyciski
         Button usersButton = createStyledButton("Użytkownicy");
         usersButton.setOnAction(e -> controller.showUserManagement());
 
-        // Przycisk konfiguracji
         Button configButton = createStyledButton("Konfiguracja");
         configButton.setOnAction(e -> controller.showConfigPanel());
 
-        // Przycisk raportów
         Button reportsButton = createStyledButton("Raporty");
         reportsButton.setOnAction(e -> controller.showReportsPanel());
 
-        // Przycisk zgłoszeń
         Button issuesButton = createStyledButton("Zgłoszenia");
         issuesButton.setOnAction(e -> controller.showIssuesPanel());
 
-        // Przycisk wylogowania
         Button logoutButton = createStyledButton("Wyloguj", "#E74C3C");
         logoutButton.setOnAction(e -> controller.logout());
 
@@ -127,23 +155,10 @@ public class AdminPanel {
         return menu;
     }
 
-    /**
-     * Tworzy przycisk z domyślnym kolorem.
-     *
-     * @param text Tekst wyświetlany na przycisku
-     * @return Stylizowany przycisk
-     */
     private Button createStyledButton(String text) {
-        return createStyledButton(text, "#2980B9"); // domyślny: niebieski
+        return createStyledButton(text, "#2980B9");
     }
 
-    /**
-     * Tworzy stylizowany przycisk z określonym kolorem.
-     *
-     * @param text  Tekst na przycisku
-     * @param color Kolor tła przycisku
-     * @return Stylizowany przycisk
-     */
     private Button createStyledButton(String text, String color) {
         Button button = new Button(text);
         button.setStyle("-fx-background-color: " + color
@@ -151,75 +166,57 @@ public class AdminPanel {
 
         // Efekt powiększenia przy najechaniu kursorem
         button.setOnMouseEntered(e -> {
-            ScaleTransition scale = new ScaleTransition(
-                    Duration.millis(200),
-                    button
-            );
-            scale.setToX(1.1);
-            scale.setToY(1.1);
-            scale.play();
+            button.setScaleX(1.1);
+            button.setScaleY(1.1);
         });
 
         button.setOnMouseExited(e -> {
-            ScaleTransition scale = new ScaleTransition(
-                    Duration.millis(200),
-                    button
-            );
-            scale.setToX(1);
-            scale.setToY(1);
-            scale.play();
+            button.setScaleX(1);
+            button.setScaleY(1);
         });
 
         return button;
     }
 
-    /**
-     * Animacja zanikania (fade in) dla danego elementu.
-     *
-     * @param element  Element do animacji
-     * @param duration Czas trwania animacji w milisekundach
-     */
     private void animateFadeIn(VBox element, int duration) {
+        // Włączenie cache dla lepszej wydajności animacji
+        element.setCache(true);
+        element.setCacheHint(CacheHint.SPEED);
+
         FadeTransition fade = new FadeTransition(
-                Duration.millis(duration)
-                ,element
+                Duration.millis(duration), element
         );
         fade.setFromValue(0);
         fade.setToValue(1);
+        fade.setOnFinished(e -> {
+            // Wyłączenie cache po zakończeniu animacji
+            element.setCache(false);
+        });
         fade.play();
     }
 
-    /**
-     * Animacja przesunięcia w dół (slide down) dla danego elementu.
-     *
-     * @param element  Element do animacji
-     * @param duration Czas trwania animacji w milisekundach
-     */
     private void animateSlideDown(VBox element, int duration) {
+        // Włączenie cache dla lepszej wydajności animacji
+        element.setCache(true);
+        element.setCacheHint(CacheHint.SPEED);
+
         TranslateTransition slide = new TranslateTransition(
-                Duration.millis(duration),
-                element
+                Duration.millis(duration), element
         );
         slide.setFromY(-50);
         slide.setToY(0);
         slide.setInterpolator(Interpolator.EASE_BOTH);
+        slide.setOnFinished(e -> {
+            // Wyłączenie cache po zakończeniu animacji
+            element.setCache(false);
+        });
         slide.play();
     }
 
-    /**
-     * Ustawia zawartość środkowego panelu aplikacji.
-     *
-     * @param pane Nowy panel do wyświetlenia
-     */
     public void setCenterPane(javafx.scene.layout.Pane pane) {
         root.setCenter(pane);
     }
 
-    /**
-     * Zwraca główną scenę aplikacji.
-     *
-     * @return Obiekt Stage przypisany do aplikacji
-     */
     public Stage getPrimaryStage() {
         return primaryStage;
     }

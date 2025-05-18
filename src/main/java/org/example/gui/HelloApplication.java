@@ -1,7 +1,7 @@
 /*
  * Classname: HelloApplication
- * Version information: 1.1
- * Date: 2025-04-11
+ * Version information: 1.2
+ * Date: 2025-05-17
  * Copyright notice: © BŁĘKITNI
  */
 
@@ -22,25 +22,31 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.example.sys.ConfigPdf;
 import org.example.sys.Login;
 
 import java.io.File;
+import java.sql.SQLException;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Główna klasa uruchamiająca aplikację GUI dla hipermarketu Stonka.
  * Zawiera logikę interfejsu logowania i przekierowywania użytkownika
  * na odpowiedni panel w zależności od roli.
  */
-public class
-HelloApplication extends Application {
+public class HelloApplication extends Application {
+
+    // Flaga wskazująca, czy wystąpił błąd krytyczny
+    private static final AtomicBoolean criticalErrorOccurred = new AtomicBoolean(false);
+    // Komunikat błędu do wyświetlenia
+    private static String errorMessage = "";
 
     /**
      * Punkt wejścia do aplikacji JavaFX.
      *
      * @param primaryStage główna scena aplikacji
      */
-
     public static void showLoginScreen(Stage primaryStage) {
         try {
             // Tworzenie nowego obiektu HelloApplication
@@ -61,96 +67,170 @@ HelloApplication extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        VBox root = new VBox(20);
-        root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: lightblue; -fx-padding: 30;");
+        // Sprawdź, czy wystąpił błąd krytyczny podczas inicjalizacji bazy danych
+        if (criticalErrorOccurred.get()) {
+            showDatabaseErrorAndExit(primaryStage, errorMessage);
+            return;
+        }
 
-        Image image = new Image(Objects.requireNonNull(
-                getClass().getResourceAsStream("/logo.png")
-        ));
-        ImageView imageView = new ImageView(image);
-        imageView.setFitWidth(150);
-        imageView.setPreserveRatio(true);
-        primaryStage.getIcons().add(image);
+        try {
+            ConfigPdf configPdf = new ConfigPdf();
+            VBox root = new VBox(20);
+            root.setAlignment(Pos.CENTER);
+            root.setStyle("-fx-background-color: lightblue; -fx-padding: 30;");
 
-        Label titleLabel = new Label("Stonka najlepszy hipermarket");
-        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        titleLabel.setOpacity(0);
+            Image image = new Image(Objects.requireNonNull(
+                    getClass().getResourceAsStream("/logo.png")
+            ));
+            ImageView imageView = new ImageView(image);
+            imageView.setFitWidth(150);
+            imageView.setPreserveRatio(true);
+            primaryStage.getIcons().add(image);
 
-        Label welcomeLabel = new Label("Witamy w Stonce");
-        welcomeLabel.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 16));
-        welcomeLabel.setOpacity(0);
+            Label titleLabel = new Label("Stonka najlepszy hipermarket");
+            titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+            titleLabel.setOpacity(0);
 
-        GridPane grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setTranslateY(-50);
+            Label welcomeLabel = new Label("Witamy w Stonce");
+            welcomeLabel.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 16));
+            welcomeLabel.setOpacity(0);
 
-        Label loginLabel = new Label("Login");
-        TextField loginField = new TextField();
-        loginField.setPromptText("Tutaj podaj login");
-        loginField.setStyle("-fx-background-color: #FFD966; -fx-padding: 5;");
+            GridPane grid = new GridPane();
+            grid.setAlignment(Pos.CENTER);
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setTranslateY(-50);
 
-        Label passwordLabel = new Label("Hasło");
-        PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Tutaj podaj hasło");
-        passwordField.setStyle("-fx-background-color: #FFD966; -fx-padding: 5;");
+            Label loginLabel = new Label("Login");
+            TextField loginField = new TextField();
+            loginField.setPromptText("Tutaj podaj login");
+            loginField.setStyle("-fx-background-color: #FFD966; -fx-padding: 5;");
 
-        grid.add(loginLabel, 0, 0);
-        grid.add(loginField, 1, 0);
-        grid.add(passwordLabel, 0, 1);
-        grid.add(passwordField, 1, 1);
+            Label passwordLabel = new Label("Hasło");
+            PasswordField passwordField = new PasswordField();
+            passwordField.setPromptText("Tutaj podaj hasło");
 
-        HBox topButtonBox = new HBox(15);
-        topButtonBox.setAlignment(Pos.CENTER);
+            passwordField.setStyle("-fx-background-color: #FFD966; -fx-padding: 5;");
 
-        Button loginButton = new Button("Zaloguj");
-        styleButton(loginButton, "#2980B9");
-        loginButton.setOnAction(e -> Login.attemptLogin(
-                loginField.getText(),
-                passwordField.getText(),
-                root
-        ));
+            grid.add(loginLabel, 0, 0);
+            grid.add(loginField, 1, 0);
+            grid.add(passwordLabel, 0, 1);
+            grid.add(passwordField, 1, 1);
 
-        Button resetPasswordButton = new Button("Resetowanie hasła");
-        styleButton(resetPasswordButton, "#F39C12");
-        resetPasswordButton.setOnAction(e -> showResetPasswordWindow());
+            HBox topButtonBox = new HBox(15);
+            topButtonBox.setAlignment(Pos.CENTER);
 
-        topButtonBox.getChildren().addAll(loginButton, resetPasswordButton);
+            Button loginButton = new Button("Zaloguj");
+            styleButton(loginButton, "#2980B9");
+            loginButton.setOnAction(e -> Login.attemptLogin(
+                    loginField.getText(),
+                    passwordField.getText(),
+                    root
+            ));
 
-        HBox bottomButtonBox = new HBox(15);
-        bottomButtonBox.setAlignment(Pos.CENTER);
+            Button resetPasswordButton = new Button("Resetowanie hasła");
+            styleButton(resetPasswordButton, "#F39C12");
+            resetPasswordButton.setOnAction(e -> showResetPasswordWindow());
 
-        Button cvButton = new Button("Złóż CV");
-        styleButton(cvButton, "#1F618D");
-        cvButton.setOnAction(e -> showCVForm());
+            topButtonBox.getChildren().addAll(loginButton, resetPasswordButton);
 
-        Button exitButton = new Button("Wyjście");
-        styleButton(exitButton, "#E74C3C");
-        exitButton.setOnAction(e -> exitApplication());
+            HBox bottomButtonBox = new HBox(15);
+            bottomButtonBox.setAlignment(Pos.CENTER);
 
-        bottomButtonBox.getChildren().addAll(cvButton, exitButton);
+            Button cvButton = new Button("Złóż CV");
+            styleButton(cvButton, "#1F618D");
+            cvButton.setOnAction(e -> showCVForm());
 
-        root.getChildren().addAll(
-                imageView,
-                titleLabel,
-                welcomeLabel,
-                grid,
-                topButtonBox,
-                bottomButtonBox
+            Button exitButton = new Button("Wyjście");
+            styleButton(exitButton, "#E74C3C");
+            exitButton.setOnAction(e -> exitApplication());
+
+            bottomButtonBox.getChildren().addAll(cvButton, exitButton);
+
+            root.getChildren().addAll(
+                    imageView,
+                    titleLabel,
+                    welcomeLabel,
+                    grid,
+                    topButtonBox,
+                    bottomButtonBox
+            );
+
+            animateFadeIn(titleLabel, 1000);
+            animateFadeIn(welcomeLabel, 1200);
+            animateSlideDown(grid, 1000);
+
+            Scene scene = new Scene(root, 600, 500);
+            primaryStage.setScene(scene);
+            primaryStage.setTitle("Stonka - Logowanie");
+            primaryStage.setMinWidth(700);
+            primaryStage.setMinHeight(450);
+            primaryStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(
+                    Alert.AlertType.ERROR,
+                    "Błąd",
+                    "Wystąpił błąd podczas uruchamiania aplikacji",
+                    e.getMessage()
+            );
+            Platform.exit();
+        }
+    }
+
+    /**
+     * Wyświetla komunikat o błędzie bazy danych i zamyka aplikację.
+     *
+     * @param stage główna scena aplikacji
+     * @param message komunikat błędu
+     */
+    private void showDatabaseErrorAndExit(Stage stage, String message) {
+        VBox errorBox = new VBox(20);
+        errorBox.setAlignment(Pos.CENTER);
+        errorBox.setPadding(new Insets(30));
+        errorBox.setStyle("-fx-background-color: #FFEBEE;");
+
+        Label errorTitle = new Label("Błąd połączenia z bazą danych");
+        errorTitle.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+        errorTitle.setStyle("-fx-text-fill: #C62828;");
+
+        Label errorDetails = new Label("Nie można uruchomić aplikacji z powodu problemów z bazą danych:");
+        errorDetails.setFont(Font.font("Arial", 14));
+
+        TextArea errorText = new TextArea(message);
+        errorText.setEditable(false);
+        errorText.setWrapText(true);
+        errorText.setPrefHeight(100);
+        errorText.setStyle("-fx-control-inner-background: #FFEBEE; -fx-border-color: #C62828;");
+
+        Label instructionLabel = new Label("Sprawdź czy:");
+        instructionLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+
+        VBox instructionBox = new VBox(5);
+        instructionBox.getChildren().addAll(
+                new Label("• Serwer bazy danych jest uruchomiony"),
+                new Label("• Dane dostępowe do bazy są poprawne"),
+                new Label("• Baza danych istnieje i jest dostępna"),
+                new Label("• Firewall nie blokuje połączenia")
         );
 
-        animateFadeIn(titleLabel, 1000);
-        animateFadeIn(welcomeLabel, 1200);
-        animateSlideDown(grid, 1000);
+        Button exitButton = new Button("Zamknij aplikację");
+        exitButton.setStyle("-fx-background-color: #C62828; -fx-text-fill: white;");
+        exitButton.setOnAction(e -> Platform.exit());
 
-        Scene scene = new Scene(root, 600, 500);
-        primaryStage.setScene(scene);
-        primaryStage.setTitle("Stonka - Logowanie");
-        primaryStage.setMinWidth(700);
-        primaryStage.setMinHeight(450);
-        primaryStage.show();
+        errorBox.getChildren().addAll(
+                errorTitle,
+                errorDetails,
+                errorText,
+                instructionLabel,
+                instructionBox,
+                exitButton
+        );
+
+        Scene errorScene = new Scene(errorBox, 600, 450);
+        stage.setScene(errorScene);
+        stage.setTitle("Stonka - Błąd krytyczny");
+        stage.show();
     }
 
     /**
@@ -521,13 +601,73 @@ HelloApplication extends Application {
         passwordStage.show();
     }
 
-
-
     /**
      * Główna metoda uruchamiająca aplikację.
      */
     public static void main(String[] args) {
-        org.example.database.DatabaseInitializer.initialize();
-        launch(args);
+        try {
+            // Inicjalizacja bazy danych
+            org.example.database.DatabaseInitializer.initialize();
+            launch(args);
+        } catch (Exception e) {
+            // Obsługa wyjątków związanych z bazą danych
+            criticalErrorOccurred.set(true);
+
+            // Zapisz komunikat błędu
+            if (e instanceof SQLException) {
+                SQLException sqlEx = (SQLException) e;
+                errorMessage = formatSQLException(sqlEx);
+            } else {
+                errorMessage = "Wystąpił nieoczekiwany błąd: " + e.getMessage();
+                e.printStackTrace();
+            }
+
+            // Uruchom aplikację, aby wyświetlić komunikat o błędzie
+            launch(args);
+        }
+    }
+
+    /**
+     * Formatuje wyjątek SQLException do czytelnej postaci.
+     *
+     * @param ex wyjątek SQLException
+     * @return sformatowany komunikat błędu
+     */
+    private static String formatSQLException(SQLException ex) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Błąd SQL: ").append(ex.getMessage()).append("\n");
+        sb.append("Kod błędu: ").append(ex.getErrorCode()).append("\n");
+        sb.append("Stan SQL: ").append(ex.getSQLState()).append("\n\n");
+
+        // Dodaj informacje o przyczynie błędu
+        Throwable cause = ex.getCause();
+        if (cause != null) {
+            sb.append("Przyczyna: ").append(cause.getMessage()).append("\n");
+        }
+
+        // Dodaj sugestie rozwiązania problemu
+        sb.append("\nMożliwe rozwiązania:\n");
+
+        // Sugestie w zależności od kodu błędu
+        switch (ex.getErrorCode()) {
+            case 0:
+                sb.append("- Sprawdź, czy serwer bazy danych jest uruchomiony\n");
+                sb.append("- Sprawdź ustawienia połączenia (host, port)\n");
+                break;
+            case 1045:
+                sb.append("- Nieprawidłowa nazwa użytkownika lub hasło\n");
+                sb.append("- Sprawdź uprawnienia użytkownika bazy danych\n");
+                break;
+            case 1049:
+                sb.append("- Baza danych nie istnieje\n");
+                sb.append("- Sprawdź nazwę bazy danych\n");
+                break;
+            default:
+                sb.append("- Sprawdź logi serwera bazy danych\n");
+                sb.append("- Skontaktuj się z administratorem systemu\n");
+        }
+
+        return sb.toString();
     }
 }
+

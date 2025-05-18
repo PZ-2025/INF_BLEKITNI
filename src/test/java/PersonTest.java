@@ -1,16 +1,32 @@
-import org.example.sys.Person;
+import org.example.sys.Address;
+import org.example.sys.Employee;
 import org.example.wyjatki.AgeException;
 import org.example.wyjatki.NameException;
+import org.example.wyjatki.PasswordException;
+import org.example.wyjatki.SalaryException;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class PersonTest {
 
+    private Employee createTestEmployee() throws NameException, AgeException, PasswordException, SalaryException {
+        Address address = new Address();
+        address.setMiasto("TestCity");
+
+        return new Employee(
+                "Jan", "Kowalski", 30, "jan@example.com",
+                "jankowal", "securePass123", address,
+                "Kierownik", new BigDecimal("5000")
+        );
+    }
+
     @Test
     void testParameterizedConstructor() {
         try {
-            Person person = new Person("Jan", "Kowalski", 30, "jan@example.com");
+            Employee person = createTestEmployee();
 
             assertEquals("Jan", person.getName());
             assertEquals("Kowalski", person.getSurname());
@@ -23,14 +39,14 @@ class PersonTest {
 
     @Test
     void testToString() throws Exception {
-        Person person = new Person("Anna", "Nowak", 25, "anna@example.com");
-        String expected = "Anna Nowak (25), anna@example.com";
+        Employee person = createTestEmployee();
+        String expected = "Jan Kowalski (30), jan@example.com";
         assertEquals(expected, person.toString());
     }
 
     @Test
     void testSettersAndGetters() throws Exception {
-        Person person = new Person();
+        Employee person = createTestEmployee();
 
         person.setName("Piotr");
         person.setSurname("Wiśniewski");
@@ -44,24 +60,24 @@ class PersonTest {
     }
 
     @Test
-    void testSetNameInvalid() {
-        Person person = new Person();
+    void testSetNameInvalid() throws Exception {
+        Employee person = createTestEmployee();
         assertThrows(NameException.class, () -> person.setName(""));
         assertThrows(NameException.class, () -> person.setName("A"));
         assertThrows(NameException.class, () -> person.setName(null));
     }
 
     @Test
-    void testSetSurnameInvalid() {
-        Person person = new Person();
+    void testSetSurnameInvalid() throws Exception {
+        Employee person = createTestEmployee();
         assertThrows(NameException.class, () -> person.setSurname(""));
         assertThrows(NameException.class, () -> person.setSurname("B"));
         assertThrows(NameException.class, () -> person.setSurname(null));
     }
 
     @Test
-    void testSetAgeInvalid() {
-        Person person = new Person();
+    void testSetAgeInvalid() throws Exception {
+        Employee person = createTestEmployee();
         assertThrows(AgeException.class, () -> person.setAge(-1));
         assertThrows(AgeException.class, () -> person.setAge(130));
         assertThrows(AgeException.class, () -> person.setAge(17));

@@ -1,12 +1,22 @@
+/*
+ * Classname: TechnicalIssuesPanel
+ * Version information: 1.1
+ * Date: 2025-05-16
+ * Copyright notice: © BŁĘKITNI
+ */
+
+
 package org.example.gui;
 
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.layout.*;
 import javafx.geometry.Insets;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 public class TechnicalIssuesPanel extends VBox {
 
@@ -16,6 +26,7 @@ public class TechnicalIssuesPanel extends VBox {
     private TextArea issueDescriptionArea;
     private ListView<String> issuesList;
     private ObservableList<String> submittedIssues;
+
 
     public TechnicalIssuesPanel() {
         setSpacing(10);

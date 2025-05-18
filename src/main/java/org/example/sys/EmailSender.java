@@ -1,3 +1,11 @@
+/*
+ * Classname: EmailSender
+ * Version information: 1.0
+ * Date: 2025-05-16
+ * Copyright notice: © BŁĘKITNI
+ */
+
+
 package org.example.sys;
 
 import java.util.Properties;
@@ -46,5 +54,8 @@ public class EmailSender {
 
         // Wysłanie wiadomości
         Transport.send(email);
+    }
+
+    public static void sendResetEmail(String email, String resetCode) {
     }
 }

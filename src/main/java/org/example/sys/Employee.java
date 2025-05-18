@@ -1,3 +1,11 @@
+/*
+ * Classname: Employee
+ * Version information: 1.0
+ * Date: 2025-05-16
+ * Copyright notice: © BŁĘKITNI
+ */
+
+
 package org.example.sys;
 
 import jakarta.persistence.*;
@@ -9,6 +17,9 @@ import org.example.wyjatki.AgeException;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/**
+ * Klasa reprezentująca pracownika w systemie.
+ */
 @Entity
 @Table(name = "Pracownicy")
 @Access(AccessType.FIELD)
@@ -42,6 +53,10 @@ public class Employee extends Person {
     @Temporal(TemporalType.DATE)
     private Date sickLeaveStartDate;
 
+    // Dodane pole do usuwania miękkiego
+    @Column(name = "usuniety", nullable = false)
+    private boolean usuniety = false;
+
     public Employee() {}
 
     public Employee(String name, String surname, int age, String email,
@@ -59,18 +74,24 @@ public class Employee extends Person {
 
     public Employee(String name, String surname, int age, Address adres,
                     String login, String password, String stanowisko, BigDecimal zarobki)
-            throws SalaryException {
-        super();
-        this.setName(name);
-        this.setSurname(surname);
-        this.setAge(age);
+            throws NameException, AgeException, SalaryException, PasswordException {
+        super(name, surname, age, null);
         this.adres = adres;
-        this.login = login;
-        this.password = password;
+        setLogin(login);
+        setPassword(password);
         this.stanowisko = stanowisko;
         setZarobki(zarobki);
         this.onSickLeave = false;
         this.sickLeaveStartDate = null;
+    }
+
+    // Getter i setter dla pola 'usuniety'
+    public boolean isUsuniety() {
+        return usuniety;
+    }
+
+    public void setUsuniety(boolean usuniety) {
+        this.usuniety = usuniety;
     }
 
     public int getId() {
@@ -133,6 +154,15 @@ public class Employee extends Person {
     public void startSickLeave(Date startDate) {
         this.sickLeaveStartDate = startDate;
         this.onSickLeave = true;
+    }
+
+    /**
+     * Sprawdza, czy pracownik ma rolę "root".
+     *
+     * @return true jeśli pracownik ma rolę "root", false w przeciwnym przypadku
+     */
+    public boolean isRoot() {
+        return "root".equalsIgnoreCase(this.stanowisko);
     }
 
     public Date getSickLeaveStartDate() {

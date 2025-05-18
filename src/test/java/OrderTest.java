@@ -1,28 +1,51 @@
 import org.example.sys.Order;
+import org.example.sys.Employee;
+import org.example.sys.Warehouse;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class OrderTest {
 
     @Test
     void testConstructorAndGetters() {
-        Order order = new Order(1, "Laptop", 10, "Tech Supplier", "2023-10-01", "Pending");
-        assertEquals(1, order.getId());
-        assertEquals("Laptop", order.getProductName());
-        assertEquals(10, order.getQuantity());
-        assertEquals("Tech Supplier", order.getSupplier());
-        assertEquals("2023-10-01", order.getOrderDate());
-        assertEquals("Pending", order.getStatus());
+        Warehouse produkt = new Warehouse("Laptop", new BigDecimal("2500.00"), 50);
+        Employee pracownik = new Employee();
+        Date data = new Date();
+
+        Order order = new Order(produkt, pracownik, 10, new BigDecimal("25000.00"), data);
+
+        assertEquals(produkt, order.getProdukt());
+        assertEquals(pracownik, order.getPracownik());
+        assertEquals(10, order.getIlosc());
+        assertEquals(new BigDecimal("25000.00"), order.getCena());
+        assertEquals(data, order.getData());
     }
 
     @Test
-    void testDefaultValues() {
-        Order order = new Order(2, "Smartphone", 5, "Mobile Supplier", "2023-10-02", "Shipped");
-        assertEquals(2, order.getId());
-        assertEquals("Smartphone", order.getProductName());
-        assertEquals(5, order.getQuantity());
-        assertEquals("Mobile Supplier", order.getSupplier());
-        assertEquals("2023-10-02", order.getOrderDate());
-        assertEquals("Shipped", order.getStatus());
+    void testSettersAndToString() {
+        Order order = new Order();
+
+        Warehouse produkt = new Warehouse("Tablet", new BigDecimal("1000.00"), 20);
+        Employee pracownik = new Employee();
+        Date data = new Date();
+
+        order.setProdukt(produkt);
+        order.setPracownik(pracownik);
+        order.setIlosc(5);
+        order.setCena(new BigDecimal("5000.00"));
+        order.setData(data);
+
+        assertEquals(produkt, order.getProdukt());
+        assertEquals(pracownik, order.getPracownik());
+        assertEquals(5, order.getIlosc());
+        assertEquals(new BigDecimal("5000.00"), order.getCena());
+        assertEquals(data, order.getData());
+
+        assertTrue(order.toString().contains("Tablet"));
+        assertTrue(order.toString().contains("5000.00"));
     }
 }

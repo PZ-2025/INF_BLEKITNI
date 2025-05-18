@@ -10,10 +10,15 @@ module org.example.gui {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
-    requires java.sql;
     requires java.mail;
     requires jakarta.persistence;
     requires org.hibernate.orm.core;
+    requires StonkaPdfLib;
+    requires org.apache.logging.log4j.core;
+    requires org.apache.logging.log4j;
+    requires jakarta.transaction;
+    requires jakarta.cdi;
+    requires java.desktop;
     requires kernel;
     requires layout;
 

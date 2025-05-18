@@ -14,8 +14,11 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.example.database.AbsenceRequestRepository;
 import org.example.database.TaskRepository;
 import org.example.database.UserRepository;
+import org.example.sys.AbsenceRequest;
+import org.example.sys.Employee;
 import org.example.sys.Task;
 
 import java.util.Date;
@@ -77,6 +80,12 @@ public class ManagerPanelController {
         HBox taskButtons = new HBox(10);
         taskButtons.setAlignment(Pos.CENTER);
 
+        Button addTaskButton = new Button("Dodaj zadanie");
+        addTaskButton.setOnAction(e -> showAddTaskPanel());
+
+        Button assignEmployeeButton = new Button("Przypisz pracownika");
+        assignEmployeeButton.setOnAction(e -> showAssignEmployeeDialog());
+
         Button editButton = new Button("Edytuj zadanie");
         Button deleteButton = new Button("Usuń zadanie");
 
@@ -85,8 +94,7 @@ public class ManagerPanelController {
             if (selectedTask != null) {
                 showEditTaskDialog(selectedTask);
             } else {
-                showAlert(Alert.AlertType.WARNING, "Błąd",
-                        "Wybierz zadanie do edycji.");
+                showAlert(Alert.AlertType.WARNING, "Błąd", "Wybierz zadanie do edycji.");
             }
         });
 
@@ -97,12 +105,16 @@ public class ManagerPanelController {
                 showAlert(Alert.AlertType.INFORMATION, "Sukces", "Usunięto zadanie.");
                 showTaskPanel();
             } else {
-                showAlert(Alert.AlertType.WARNING, "Błąd",
-                        "Wybierz zadanie do usunięcia.");
+                showAlert(Alert.AlertType.WARNING, "Błąd", "Wybierz zadanie do usunięcia.");
             }
         });
 
-        taskButtons.getChildren().addAll(editButton, deleteButton);
+        taskButtons.getChildren().addAll(
+                addTaskButton,
+                assignEmployeeButton,
+                editButton,
+                deleteButton
+        );
 
         Label recruitLabel = new Label("Panel rekrutacji");
         ListView<String> recruitmentList = new ListView<>();
@@ -201,18 +213,194 @@ public class ManagerPanelController {
         layout.setPadding(new Insets(20));
 
         Label absenceLabel = new Label("Wnioski o nieobecność");
-        absenceTable = new TableView<>();
-        absenceTable.setMinHeight(200);
+        absenceLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
+        // Utworzenie tabeli wniosków
+        TableView<AbsenceRequest> absenceTable = new TableView<>();
+        absenceTable.setMinHeight(300);
+        absenceTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // Kolumna ID wniosku
+        TableColumn<AbsenceRequest, Integer> idColumn = new TableColumn<>("ID");
+        idColumn.setCellValueFactory(data -> new javafx.beans.property.SimpleIntegerProperty(
+                data.getValue().getId()).asObject());
+        idColumn.setPrefWidth(50);
+
+        // Kolumna typu wniosku
+        TableColumn<AbsenceRequest, String> typeColumn = new TableColumn<>("Typ wniosku");
+        typeColumn.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
+                data.getValue().getTypWniosku()));
+        typeColumn.setPrefWidth(150);
+
+        // Kolumna pracownika
+        TableColumn<AbsenceRequest, String> employeeColumn = new TableColumn<>("Pracownik");
+        employeeColumn.setCellValueFactory(data -> {
+            Employee pracownik = data.getValue().getPracownik();
+            if (pracownik != null) {
+                return new javafx.beans.property.SimpleStringProperty(
+                        pracownik.getName() + " " + pracownik.getSurname());
+            } else {
+                return new javafx.beans.property.SimpleStringProperty("Nieznany");
+            }
+        });
+        employeeColumn.setPrefWidth(150);
+
+        // Kolumna daty od
+        TableColumn<AbsenceRequest, String> fromDateColumn = new TableColumn<>("Od");
+        fromDateColumn.setCellValueFactory(data -> {
+            Date dataRozpoczecia = data.getValue().getDataRozpoczecia();
+            if (dataRozpoczecia != null) {
+                return new javafx.beans.property.SimpleStringProperty(
+                        dataRozpoczecia.toString());
+            } else {
+                return new javafx.beans.property.SimpleStringProperty("Brak daty");
+            }
+        });
+        fromDateColumn.setPrefWidth(100);
+
+        // Kolumna daty do
+        TableColumn<AbsenceRequest, String> toDateColumn = new TableColumn<>("Do");
+        toDateColumn.setCellValueFactory(data -> {
+            Date dataZakonczenia = data.getValue().getDataZakonczenia();
+            if (dataZakonczenia != null) {
+                return new javafx.beans.property.SimpleStringProperty(
+                        dataZakonczenia.toString());
+            } else {
+                return new javafx.beans.property.SimpleStringProperty("Brak daty");
+            }
+        });
+        toDateColumn.setPrefWidth(100);
+
+        // Kolumna opisu
+        TableColumn<AbsenceRequest, String> descriptionColumn = new TableColumn<>("Opis");
+        descriptionColumn.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
+                data.getValue().getOpis()));
+        descriptionColumn.setPrefWidth(200);
+
+        // Dodanie kolumn do tabeli
+        absenceTable.getColumns().addAll(
+                idColumn, typeColumn, employeeColumn,
+                fromDateColumn, toDateColumn, descriptionColumn
+        );
+
+        // Utworzenie repozytorium wniosków
+        AbsenceRequestRepository absenceRepository = new AbsenceRequestRepository();
+
+        // Pobranie wszystkich wniosków
+        try {
+            absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Błąd",
+                    "Nie udało się załadować wniosków: " + e.getMessage());
+        }
+
+        // Przyciski akcji
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER);
 
         Button approveButton = new Button("Zatwierdź");
-        Button rejectButton = new Button("Odrzuć");
-        buttonBox.getChildren().addAll(approveButton, rejectButton);
+        approveButton.setStyle("-fx-background-color: #27AE60; -fx-text-fill: white;");
 
+        Button rejectButton = new Button("Odrzuć");
+        rejectButton.setStyle("-fx-background-color: #E74C3C; -fx-text-fill: white;");
+
+        Button refreshButton = new Button("Odśwież");
+        refreshButton.setStyle("-fx-background-color: #3498DB; -fx-text-fill: white;");
+
+        // Obsługa zatwierdzania wniosku
+        approveButton.setOnAction(e -> {
+            AbsenceRequest selectedRequest = absenceTable.getSelectionModel().getSelectedItem();
+            if (selectedRequest != null) {
+                try {
+                    String currentOpis = selectedRequest.getOpis();
+                    String newOpis = (currentOpis != null && !currentOpis.isEmpty())
+                            ? currentOpis + " [ZATWIERDZONY]"
+                            : "[ZATWIERDZONY]";
+                    selectedRequest.setOpis(newOpis);
+
+                    // Aktualizacja wniosku
+                    absenceRepository.aktualizujWniosek(selectedRequest);
+
+                    // Aktualizacja statusu pracownika, jeśli to urlop chorobowy
+                    if (selectedRequest.getTypWniosku().toLowerCase().contains("chorob")) {
+                        Employee pracownik = selectedRequest.getPracownik();
+                        pracownik.startSickLeave(selectedRequest.getDataRozpoczecia());
+                        userRepository.aktualizujPracownika(pracownik);
+                    }
+
+                    showAlert(Alert.AlertType.INFORMATION, "Sukces",
+                            "Wniosek został zatwierdzony.");
+
+                    // Odświeżenie tabeli
+                    absenceTable.getItems().clear();
+                    absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    showAlert(Alert.AlertType.ERROR, "Błąd",
+                            "Nie udało się zatwierdzić wniosku: " + ex.getMessage());
+                }
+            } else {
+                showAlert(Alert.AlertType.WARNING, "Błąd",
+                        "Wybierz wniosek do zatwierdzenia.");
+            }
+        });
+
+        // Obsługa odrzucania wniosku
+        rejectButton.setOnAction(e -> {
+            AbsenceRequest selectedRequest = absenceTable.getSelectionModel().getSelectedItem();
+            if (selectedRequest != null) {
+                try {
+                    String currentOpis = selectedRequest.getOpis();
+                    String newOpis = (currentOpis != null && !currentOpis.isEmpty())
+                            ? currentOpis + " [ODRZUCONY]"
+                            : "[ODRZUCONY]";
+                    selectedRequest.setOpis(newOpis);
+
+                    absenceRepository.aktualizujWniosek(selectedRequest);
+                    showAlert(Alert.AlertType.INFORMATION, "Sukces",
+                            "Wniosek został odrzucony.");
+
+                    // Odświeżenie tabeli
+                    absenceTable.getItems().clear();
+                    absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    showAlert(Alert.AlertType.ERROR, "Błąd",
+                            "Nie udało się odrzucić wniosku: " + ex.getMessage());
+                }
+            } else {
+                showAlert(Alert.AlertType.WARNING, "Błąd",
+                        "Wybierz wniosek do odrzucenia.");
+            }
+        });
+
+        // Obsługa odświeżania tabeli
+        refreshButton.setOnAction(e -> {
+            try {
+                absenceTable.getItems().clear();
+                absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+                showAlert(Alert.AlertType.INFORMATION, "Sukces",
+                        "Lista wniosków została odświeżona.");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Błąd",
+                        "Nie udało się odświeżyć listy wniosków: " + ex.getMessage());
+            }
+        });
+
+        buttonBox.getChildren().addAll(approveButton, rejectButton, refreshButton);
+
+        // Przycisk powrotu
         Button backButton = new Button("Wróć");
         backButton.setOnAction(e -> showTaskPanel());
+
+        // Zamknięcie repozytorium po zamknięciu panelu
+        primaryStage.setOnHidden(event -> {
+            if (absenceRepository != null) {
+                absenceRepository.close();
+            }
+        });
 
         layout.getChildren().addAll(
                 absenceLabel, absenceTable, buttonBox, backButton
@@ -220,6 +408,8 @@ public class ManagerPanelController {
 
         managerPanel.setCenterPane(layout);
     }
+
+
 
     /**
      * Wyświetla okno przypisywania pracownika do zadania.

@@ -1,3 +1,11 @@
+/*
+ * Classname: Person
+ * Version information: 1.0
+ * Date: 2025-05-16
+ * Copyright notice: © BŁĘKITNI
+ */
+
+
 package org.example.sys;
 
 import jakarta.persistence.Column;
@@ -6,7 +14,7 @@ import org.example.wyjatki.AgeException;
 import org.example.wyjatki.NameException;
 
 @MappedSuperclass
-public class Person {
+public abstract class Person {
 
     @Column(name = "Imie")
     private String name;

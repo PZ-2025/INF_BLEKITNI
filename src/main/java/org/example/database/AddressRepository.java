@@ -1,3 +1,11 @@
+/*
+ * Classname: AddressRepository
+ * Version information: 1.1
+ * Date: 2025-05-16
+ * Copyright notice: © BŁĘKITNI
+ */
+
+
 package org.example.database;
 
 import jakarta.persistence.*;

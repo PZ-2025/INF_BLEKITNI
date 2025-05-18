@@ -1,10 +1,8 @@
 import org.example.sys.Admin;
-import org.example.sys.Address;
 import org.example.sys.Employee;
-import org.example.wyjatki.PasswordException;
-import org.example.wyjatki.SalaryException;
-import org.example.wyjatki.NameException;
-import org.example.wyjatki.AgeException;
+import org.example.sys.Address;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -13,109 +11,82 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AdminTest {
 
-    @Test
-    void testFullConstructor() throws Exception {
-        Address address = new Address();
-        address.setMiasto("Warszawa");
+    private Admin admin;
+    private Employee employee;
 
-        Admin admin = new Admin(
-                "John", "Doe", 30, "john@example.com",
-                "adminLogin", "adminPass123",
-                address, "Admin", new BigDecimal("6000.00")
-        );
-
-        assertEquals("John", admin.getName());
-        assertEquals("Doe", admin.getSurname());
-        assertEquals(30, admin.getAge());
-        assertEquals("john@example.com", admin.getEmail());
-        assertEquals("adminLogin", admin.getLogin());
-        assertEquals("adminPass123", admin.getPassword());
-        assertEquals("Admin", admin.getStanowisko());
-        assertEquals(new BigDecimal("6000.00"), admin.getZarobki());
-        assertEquals("Warszawa", admin.getAdres().getMiasto());
-    }
-
-    @Test
-    void testDefaultConstructor() {
-        Admin admin = new Admin();
-        assertNull(admin.getName());
-        assertNull(admin.getSurname());
-        assertEquals(0, admin.getAge());
-        assertNull(admin.getEmail());
-        assertNull(admin.getLogin());
-        assertNull(admin.getPassword());
-        assertNull(admin.getStanowisko());
-        assertNull(admin.getZarobki());
-        assertNull(admin.getAdres());
+    @BeforeEach
+    void setup() {
+        employee = exampleEmployee();
+        admin = new Admin(employee);
     }
 
     @Test
     void testIsAdmin() {
-        Admin admin = new Admin();
         assertTrue(admin.isAdmin());
     }
 
     @Test
-    void testUpdateName() throws NameException {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
-        admin.updateName(emp, "Ewa");
-        assertEquals("Ewa", emp.getName());
+    void testGetEmployee() {
+        assertEquals(employee, admin.getEmployee());
     }
 
     @Test
-    void testUpdateSurname() throws NameException {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
-        admin.updateSurname(emp, "Nowak");
-        assertEquals("Nowak", emp.getSurname());
+    void testUpdateName() {
+        admin.updateName("Ewa");
+        assertEquals("Ewa", employee.getName());
     }
 
     @Test
-    void testUpdateAge() throws AgeException {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
-        admin.updateAge(emp, 45);
-        assertEquals(45, emp.getAge());
+    void testUpdateSurname() {
+        admin.updateSurname("Nowak");
+        assertEquals("Nowak", employee.getSurname());
+    }
+
+    @Test
+    void testUpdateAge() {
+        admin.updateAge(45);
+        assertEquals(45, employee.getAge());
     }
 
     @Test
     void testUpdateAddress() {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
-
         Address newAddr = new Address();
         newAddr.setMiasto("Kraków");
 
-        admin.updateAddress(emp, newAddr);
-        assertEquals("Kraków", emp.getAdres().getMiasto());
+        admin.updateAddress(newAddr);
+        assertEquals("Kraków", employee.getAdres().getMiasto());
     }
 
     @Test
-    void testUpdatePassword() throws PasswordException {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
-
-        admin.updatePassword(emp, "newSecurePass");
-        assertEquals("newSecurePass", emp.getPassword());
+    void testUpdatePassword() {
+        admin.updatePassword("newSecurePass");
+        assertEquals("newSecurePass", employee.getPassword());
     }
 
     @Test
     void testUpdateDepartment() {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
-
-        admin.updateDepartment(emp, "HR");
-        assertEquals("HR", emp.getStanowisko());
+        admin.updateDepartment("HR");
+        assertEquals("HR", employee.getStanowisko());
     }
 
     @Test
-    void testUpdateSalary() throws SalaryException {
-        Admin admin = new Admin();
-        Employee emp = exampleEmployee();
+    void testUpdateSalary() {
+        BigDecimal newSalary = new BigDecimal("8800.50");
+        admin.updateSalary(newSalary);
+        assertEquals(newSalary, employee.getZarobki());
+    }
 
-        admin.updateSalary(emp, new BigDecimal("8800.50"));
-        assertEquals(new BigDecimal("8800.50"), emp.getZarobki());
+    @Test
+    void testAddAndRemoveEmployee() {
+        Employee e2 = exampleEmployee2();
+        assertTrue(admin.getAllEmployees().isEmpty());
+
+        admin.addEmployee(e2);
+        assertEquals(1, admin.getAllEmployees().size());
+        assertTrue(admin.getAllEmployees().contains(e2));
+
+        admin.removeEmployee(e2);
+        assertTrue(admin.getAllEmployees().isEmpty());
     }
 
     /**
@@ -133,6 +104,21 @@ class AdminTest {
             );
         } catch (Exception e) {
             throw new RuntimeException("Błąd przy tworzeniu przykładowego pracownika", e);
+        }
+    }
+
+    private Employee exampleEmployee2() {
+        try {
+            Address addr = new Address();
+            addr.setMiasto("Gdańsk");
+
+            return new Employee(
+                    "Marek", "Nowicki", 32, "marek@wp.pl",
+                    "mnow", "pass67890", addr,
+                    "Magazynier", new BigDecimal("3900")
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Błąd przy tworzeniu przykładowego pracownika 2", e);
         }
     }
 }
