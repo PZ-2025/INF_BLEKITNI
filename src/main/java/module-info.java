@@ -22,6 +22,7 @@ module org.example.gui {
     requires kernel;
     requires layout;
     requires org.apache.pdfbox;
+    requires org.apache.pdfbox.tools;
 
     opens org.example.gui to javafx.fxml;
     opens org.example.sys to javafx.base, javafx.fxml, org.hibernate.orm.core, jakarta.persistence;

@@ -1147,27 +1147,16 @@ public class AdminPanelController {
         stage.show();
     }
     @FXML
-    private void onGenerateReportsClicked() {
+    public void onGenerateReportsClicked() {
+        System.out.println("Kliknięto Raporty w panelu admina");
         try {
-            // 1) Raport sprzedaży
-            SalesReportGenerator salesGen = new SalesReportGenerator();
-            salesGen.setLogoPath(getResourcePath("logo.png"));
-            salesGen.setSalesData(List.of(
-                    new SalesReportGenerator.SalesRecord(1, LocalDateTime.now().minusDays(1),
-                            "Mleko", "Spożywcze", 10, 25.0),
-                    new SalesReportGenerator.SalesRecord(2, LocalDateTime.now().minusDays(2),
-                            "Chleb", "Spożywcze", 5, 12.5)
-            ));
-            /*
-            File salesPdf = salesGen.generateReport(
-                    "reports/sales_report.pdf",
-                    SalesReportGenerator.PeriodType.DAILY,
-                    List.of("Spożywcze")
-            );
-            */
-            // 2) Raport statystyk
+            // Twój dotychczasowy kod generowania raportów:
+            File reportsDir = new File("reports");
+            if (!reportsDir.exists()) reportsDir.mkdirs();
+
+            // raport statystyk
             StatsReportGenerator statsGen = new StatsReportGenerator();
-            statsGen.setLogoPath(getResourcePath("logo.png"));
+            statsGen.setLogoPath(getClass().getResource("/logo.png").getPath());
             statsGen.setTaskData(List.of(
                     new StatsReportGenerator.TaskRecord("Inwentaryzacja", "Magazyn",
                             StatsReportGenerator.Priority.MEDIUM,
@@ -1183,13 +1172,13 @@ public class AdminPanelController {
                     List.of(StatsReportGenerator.Priority.MEDIUM)
             );
 
-            // 3) Raport zadań
+            // raport zadań
             TaskReportGenerator taskGen = new TaskReportGenerator();
-            taskGen.setLogoPath(getResourcePath("logo.png"));
+            taskGen.setLogoPath(getClass().getResource("/logo.png").getPath());
             taskGen.setTaskData(List.of(
                     new TaskReportGenerator.TaskRecord("Sprzątanie",
                             LocalDate.now().plusDays(2),
-                            null,   // brak priorytetu
+                            null,
                             "Anna Nowak")
             ));
             File tasksPdf = taskGen.generateReport(
@@ -1200,19 +1189,18 @@ public class AdminPanelController {
 
             showAlert("Sukces",
                     "Wygenerowano raporty:\n" +
-                            //salesPdf.getName() + "\n" +
                             statsPdf.getName() + "\n" +
                             tasksPdf.getName()
             );
-        }
-        catch (NoDataException nde) {
+        } catch (NoDataException nde) {
             showAlert("Brak danych", nde.getMessage());
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             ex.printStackTrace();
-            showAlert("Błąd", "Coś poszło nie tak podczas generowania raportów: " + ex.getMessage());
+            showAlert("Błąd", "Coś poszło nie tak: " + ex.getMessage());
         }
     }
+
+
 
 
     /** Pomocnicza metoda: ścieżka do zasobu w classpath */
