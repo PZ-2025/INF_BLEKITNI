@@ -5,6 +5,8 @@ import org.example.sys.Address;
 
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania adresów po różnych kryteriach
+
 public class AddressRepository {
 
     private final EntityManagerFactory emf;

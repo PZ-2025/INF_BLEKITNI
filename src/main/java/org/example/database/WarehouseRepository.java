@@ -5,6 +5,8 @@ import org.example.sys.Warehouse;
 
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania stanów magazynowych po różnych kryteriach
+
 public class WarehouseRepository {
 
     private final EntityManagerFactory emf;

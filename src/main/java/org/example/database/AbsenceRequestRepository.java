@@ -5,6 +5,8 @@ import org.example.sys.AbsenceRequest;
 
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania wniosków o nieobecność po różnych kryteriach
+
 public class AbsenceRequestRepository {
 
     private final EntityManagerFactory emf;

@@ -15,6 +15,8 @@ import org.example.sys.TechnicalIssue;
 
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania zgłoszeń po różnych kryteriach
+
 /**
  * Repozytorium do obsługi zgłoszeń technicznych.
  */

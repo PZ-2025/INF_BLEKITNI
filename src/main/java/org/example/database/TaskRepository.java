@@ -15,6 +15,8 @@ import org.example.sys.Task;
 
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania zadań po różnych kryteriach
+
 /**
  * Repozytorium do obsługi zadań.
  */

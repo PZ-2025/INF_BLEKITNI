@@ -6,6 +6,8 @@ import org.example.sys.Raport;
 import java.io.File;
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania raportów po różnych kryteriach
+
 public class RaportRepository {
 
     private final EntityManagerFactory emf;

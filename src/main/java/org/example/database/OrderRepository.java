@@ -5,6 +5,8 @@ import org.example.sys.Order;
 
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania zamówień po różnych kryteriach
+
 public class OrderRepository {
 
     private final EntityManagerFactory emf;

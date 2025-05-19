@@ -8,6 +8,8 @@ import jakarta.persistence.Persistence;
 import org.example.sys.Employee;
 import java.util.List;
 
+// TODO: dodać metody do wyszukiwania pracowników po różnych kryteriach
+
 /**
  * Repozytorium do operacji na pracownikach.
  */

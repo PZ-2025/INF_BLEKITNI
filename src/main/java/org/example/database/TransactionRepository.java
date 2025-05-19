@@ -5,6 +5,8 @@ import org.example.sys.Transaction;
 
 import java.util.List;
 
+// TODO: dodaj metody do wyszukiwania transakcji po różnych kryteriach
+
 public class TransactionRepository {
 
     private final EntityManagerFactory emf;
