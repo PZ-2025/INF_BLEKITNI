@@ -1,70 +1,66 @@
 package org.example.pdflib;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
 
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 public class ReportGenerator {
 
-    public static File generate(String outputPath,
-                                String title,
-                                Map<String, String> filters,
-                                String logoPath,
-                                List<?> data) throws IOException {
-
-        try (PDDocument doc = new PDDocument()) {
-            PDPage page = new PDPage(PDRectangle.A4);
-            doc.addPage(page);
-
-            // Użyj wbudowanej czcionki Courier (działa w PDFBox 3.0.5)
-            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.COURIER);
-
-            try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-                // 1) Tytuł
-                cs.beginText();
-                cs.setFont(font, 18);
-                cs.newLineAtOffset(50, 780);
-                cs.showText(title);
-                cs.endText();
-
-                // 2) Logo
-                if (logoPath != null && !logoPath.isEmpty()) {
-                    PDImageXObject logo = PDImageXObject.createFromFile(logoPath, doc);
-                    float scale = 100f / logo.getWidth();
-                    cs.drawImage(logo, 450, 720, logo.getWidth() * scale, logo.getHeight() * scale);
-                }
-
-                // 3) Filtry
-                float y = 750;
-                cs.beginText();
-                cs.setFont(font, 12);
-                cs.newLineAtOffset(50, y);
-                for (Map.Entry<String, String> e : filters.entrySet()) {
-                    cs.showText(e.getKey() + ": " + e.getValue());
-                    cs.newLineAtOffset(0, -15);
-                }
-                cs.endText();
-
-                // 4) Dane
-                cs.beginText();
-                cs.setFont(font, 12);
-                cs.newLineAtOffset(50, y - filters.size() * 15 - 20);
-                cs.showText("Liczba wierszy danych: " + data.size());
-                cs.endText();
-            }
-
-            doc.save(outputPath);
+    /**
+     * Generuje prosty raport PDF.
+     *
+     * @param reportName  nazwa raportu (np. "Raport sprzedaży")
+     * @param filters     mapa filtrów (klucz → wartość)
+     * @return plik PDF z raportem
+     * @throws Exception w przypadku błędów IO lub PDF
+     */
+    public static File generate(String reportName, Map<String, String> filters) throws Exception {
+        // ścieżka katalogu do zapisu (z ConfigManager)
+        String dirPath = ConfigManager.getReportPath();
+        File dir = new File(dirPath);
+        if (!dir.exists() || !dir.isDirectory()) {
+            throw new IllegalArgumentException("Niepoprawna ścieżka raportów: " + dirPath);
         }
 
-        return new File(outputPath);
+        // tworzymy nazwę pliku: typ + znacznik czasu
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String safeName = reportName.toLowerCase()
+                .replace(" ", "_")
+                .replaceAll("[^a-z0-9_]", "");
+        String fileName = safeName + "_" + timestamp + ".pdf";
+
+        File outFile = new File(dir, fileName);
+        outFile.getParentFile().mkdirs();
+
+        // ustawienie writer + document
+        PdfWriter writer = new PdfWriter(outFile);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf);
+
+        // nagłówek
+        document.add(new Paragraph(reportName)
+                .setFontSize(18)
+                .setBold());
+        document.add(new Paragraph("Wygenerowano: " +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))));
+        document.add(new Paragraph(" "));
+
+        // treść filtrów
+        document.add(new Paragraph("Użyte filtry:").setBold());
+        filters.forEach((k, v) -> {
+            document.add(new Paragraph(String.format("• %s: %s", k, v != null ? v : "(brak)")));
+        });
+
+        document.add(new Paragraph(" "));
+        document.add(new Paragraph("<< Tutaj dodaj swoje dane raportu >>"));
+
+        document.close();
+        return outFile;
     }
 }

@@ -135,9 +135,7 @@ public class AdminPanel {
         configButton.setOnAction(e -> controller.showConfigPanel());
 
         Button reportsButton = createStyledButton("Raporty");
-        reportsButton.setOnAction(e -> controller.onGenerateReportsClicked());
-
-
+        reportsButton.setOnAction(e -> controller.showReportsPanel());
         Button issuesButton = createStyledButton("Zgłoszenia");
         issuesButton.setOnAction(e -> controller.showIssuesPanel());
 

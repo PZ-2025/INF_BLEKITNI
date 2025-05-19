@@ -5,7 +5,7 @@
  * Copyright notice: © BŁĘKITNI
  */
 
-package org.example.database;
+package org.example.repository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;

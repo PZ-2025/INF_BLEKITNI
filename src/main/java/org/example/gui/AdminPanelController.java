@@ -18,43 +18,34 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.example.database.TechnicalIssueRepository;
-import org.example.database.UserRepository;
-import org.example.pdflib.*;
+import org.example.database.*;
+import org.example.pdflib.ConfigManager;
+import org.example.repository.TaskRepository;
 import org.example.sys.Employee;
 import org.example.sys.TechnicalIssue;
 import org.example.wyjatki.PasswordException;
 import org.example.wyjatki.SalaryException;
-import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import pdf.NoDataException;
-import pdf.SalesReportGenerator;
-import pdf.StatsRaportGenerator;
-import pdf.TaskRaportGenerator;
-import org.example.pdflib.ConfigManager;
-import org.example.pdflib.ReportGenerator;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.io.File;
-import javafx.scene.layout.GridPane;
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import org.example.sys.TechnicalIssue;
-import org.example.database.AddressRepository;
-import org.example.sys.Address;
-import pdf.NoDataException;
-import pdf.SalesReportGenerator;
-import pdf.StatsRaportGenerator;
-import pdf.TaskRaportGenerator;
 
 import java.io.File;
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.Map;
+
+import org.example.sys.Address;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
+import java.util.ArrayList;
+
+import pdf.*; // Zakładam, że generatory raportów znajdują się w pakiecie pdf
+import sys.Product;
 
 /**
  * Kontroler odpowiedzialny za obsługę logiki
@@ -729,11 +720,10 @@ public class AdminPanelController {
      * Wyświetla panel generowania raportów.
      */
     public void showReportsPanel() {
-        if (reportsPanelView == null) {
-            reportsPanelView = createReportsPanelView();
-        }
-        adminPanel.setCenterPane(reportsPanelView);
+        ReportsPanel panel = new ReportsPanel();
+        adminPanel.setCenterPane(panel);
     }
+
 
     /**
      * Buduje (synchronnie) widok panelu raportów.
@@ -837,7 +827,6 @@ public class AdminPanelController {
                 + "\nOkres: " + from + " – " + to);
         alert.showAndWait();
     }
-
 
 
     /**
@@ -1146,73 +1135,357 @@ public class AdminPanelController {
         stage.setScene(new javafx.scene.Scene(layout));
         stage.show();
     }
-    @FXML
+    // Metoda wywoływana po kliknięciu "Raporty"
     public void onGenerateReportsClicked() {
-        System.out.println("Kliknięto Raporty w panelu admina");
-        try {
-            // Twój dotychczasowy kod generowania raportów:
-            File reportsDir = new File("reports");
-            if (!reportsDir.exists()) reportsDir.mkdirs();
+        Stage reportStage = new Stage();
+        reportStage.initModality(Modality.APPLICATION_MODAL);
+        reportStage.setTitle("Generowanie raportów");
 
-            // raport statystyk
-            StatsReportGenerator statsGen = new StatsReportGenerator();
-            statsGen.setLogoPath(getClass().getResource("/logo.png").getPath());
-            statsGen.setTaskData(List.of(
-                    new StatsReportGenerator.TaskRecord("Inwentaryzacja", "Magazyn",
-                            StatsReportGenerator.Priority.MEDIUM,
-                            LocalDate.now().minusDays(1),
-                            LocalDate.now(),
-                            "Jan Kowalski")
-            ));
-            File statsPdf = statsGen.generateReport(
-                    "reports/stats_report.pdf",
-                    LocalDate.now(),
-                    StatsReportGenerator.PeriodType.DAILY,
-                    List.of("Magazyn"),
-                    List.of(StatsReportGenerator.Priority.MEDIUM)
-            );
+        TabPane tabPane = new TabPane();
 
-            // raport zadań
-            TaskReportGenerator taskGen = new TaskReportGenerator();
-            taskGen.setLogoPath(getClass().getResource("/logo.png").getPath());
-            taskGen.setTaskData(List.of(
-                    new TaskReportGenerator.TaskRecord("Sprzątanie",
-                            LocalDate.now().plusDays(2),
-                            null,
-                            "Anna Nowak")
-            ));
-            File tasksPdf = taskGen.generateReport(
-                    "reports/tasks_report.pdf",
-                    TaskReportGenerator.PeriodType.LAST_WEEK,
-                    List.of("W trakcie")
-            );
+        // Dodanie zakładek dla każdego typu raportu
+        tabPane.getTabs().add(createWorkloadTab());
+        tabPane.getTabs().add(createWarehouseTab());
+        tabPane.getTabs().add(createTaskTab());
+        tabPane.getTabs().add(createStatsTab());
+        tabPane.getTabs().add(createSalesTab());
 
-            showAlert("Sukces",
-                    "Wygenerowano raporty:\n" +
-                            statsPdf.getName() + "\n" +
-                            tasksPdf.getName()
-            );
-        } catch (NoDataException nde) {
-            showAlert("Brak danych", nde.getMessage());
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            showAlert("Błąd", "Coś poszło nie tak: " + ex.getMessage());
+        Scene scene = new Scene(tabPane, 600, 400);
+        reportStage.setScene(scene);
+        reportStage.show();
+    }
+
+    // Zakładka dla raportu obciążenia
+    private Tab createWorkloadTab() {
+        Tab tab = new Tab("Obciążenie");
+        tab.setClosable(false);
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+
+        Label startDateLabel = new Label("Data początkowa:");
+        DatePicker startDatePicker = new DatePicker(LocalDate.now().minusWeeks(1));
+
+        Label endDateLabel = new Label("Data końcowa:");
+        DatePicker endDatePicker = new DatePicker(LocalDate.now());
+
+        Label positionsLabel = new Label("Stanowiska:");
+        ListView<String> positionsListView = new ListView<>();
+        positionsListView.getItems().addAll(getAllPositions());
+        positionsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Label statusesLabel = new Label("Statusy (opcjonalne):");
+        ListView<String> statusesListView = new ListView<>();
+        statusesListView.getItems().addAll("Przeciążenie", "Niedociążenie", "Optymalne");
+        statusesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Button generateButton = new Button("Generuj");
+        generateButton.setOnAction(e -> generateWorkloadReport(
+                startDatePicker.getValue(),
+                endDatePicker.getValue(),
+                positionsListView.getSelectionModel().getSelectedItems(),
+                statusesListView.getSelectionModel().getSelectedItems()
+        ));
+
+        box.getChildren().addAll(
+                startDateLabel, startDatePicker,
+                endDateLabel, endDatePicker,
+                positionsLabel, positionsListView,
+                statusesLabel, statusesListView,
+                generateButton
+        );
+        tab.setContent(box);
+        return tab;
+    }
+
+    private void generateWorkloadReport(LocalDate startDate, LocalDate endDate,
+                                        List<String> selectedPositions, List<String> selectedStatuses) {
+        if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
+            showAlert(Alert.AlertType.ERROR, "Błąd", "Nieprawidłowy zakres dat.");
+            return;
+        }
+
+        String outputPath = ConfigManager.getReportPath() + "/WorkloadReport_" + LocalDate.now() + ".pdf";
+        ensureDirectoryExists(ConfigManager.getReportPath());
+
+        WorkloadReportGenerator generator = new WorkloadReportGenerator();
+        generator.setWorkloadData(getWorkloadData());
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                generator.generateReport(outputPath, startDate, endDate, selectedPositions, selectedStatuses);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
+        executor.execute(task);
+    }
+
+    // Zakładka dla raportu magazynu
+    private Tab createWarehouseTab() {
+        Tab tab = new Tab("Magazyn");
+        tab.setClosable(false);
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+
+        Label categoriesLabel = new Label("Kategorie:");
+        ListView<String> categoriesListView = new ListView<>();
+        categoriesListView.getItems().addAll(getAllCategories());
+        categoriesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Button generateButton = new Button("Generuj");
+        generateButton.setOnAction(e -> generateWarehouseReport(
+                categoriesListView.getSelectionModel().getSelectedItems()
+        ));
+
+        box.getChildren().addAll(categoriesLabel, categoriesListView, generateButton);
+        tab.setContent(box);
+        return tab;
+    }
+
+    private void generateWarehouseReport(List<String> selectedCategories) {
+        String outputPath = ConfigManager.getReportPath() + "/WarehouseReport_" + LocalDate.now() + ".pdf";
+        ensureDirectoryExists(ConfigManager.getReportPath());
+
+        WarehouseRaport generator = new WarehouseRaport();
+        List<Product> products = getProducts();
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                generator.generateReport(outputPath, products, selectedCategories);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
+        executor.execute(task);
+    }
+
+    // Zakładka dla raportu zadań
+    private Tab createTaskTab() {
+        Tab tab = new Tab("Zadania");
+        tab.setClosable(false);
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+
+        Label periodLabel = new Label("Okres:");
+        ComboBox<TaskRaportGenerator.PeriodType> periodComboBox = new ComboBox<>();
+        periodComboBox.getItems().addAll(TaskRaportGenerator.PeriodType.values());
+        periodComboBox.setValue(TaskRaportGenerator.PeriodType.LAST_WEEK);
+
+        Label statusesLabel = new Label("Statusy:");
+        ListView<String> statusesListView = new ListView<>();
+        statusesListView.getItems().addAll("Zakończone", "W trakcie", "Opóźnione");
+        statusesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Button generateButton = new Button("Generuj");
+        generateButton.setOnAction(e -> generateTaskReport(
+                periodComboBox.getValue(),
+                statusesListView.getSelectionModel().getSelectedItems()
+        ));
+
+        box.getChildren().addAll(periodLabel, periodComboBox, statusesLabel, statusesListView, generateButton);
+        tab.setContent(box);
+        return tab;
+    }
+
+    private void generateTaskReport(TaskRaportGenerator.PeriodType periodType, List<String> selectedStatuses) {
+        String outputPath = ConfigManager.getReportPath() + "/TaskReport_" + LocalDate.now() + ".pdf";
+        ensureDirectoryExists(ConfigManager.getReportPath());
+
+        TaskRaportGenerator generator = new TaskRaportGenerator();
+        generator.setTaskData(getTaskData());
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                generator.generateReport(outputPath, periodType, selectedStatuses);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
+        executor.execute(task);
+    }
+
+    // Zakładka dla raportu statystyk
+    private Tab createStatsTab() {
+        Tab tab = new Tab("Statystyki");
+        tab.setClosable(false);
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+
+        Label dateLabel = new Label("Data raportu:");
+        DatePicker datePicker = new DatePicker(LocalDate.now());
+
+        Label periodLabel = new Label("Okres:");
+        ComboBox<StatsRaportGenerator.PeriodType> periodComboBox = new ComboBox<>();
+        periodComboBox.getItems().addAll(StatsRaportGenerator.PeriodType.values());
+        periodComboBox.setValue(StatsRaportGenerator.PeriodType.WEEKLY);
+
+        Label positionsLabel = new Label("Stanowiska:");
+        ListView<String> positionsListView = new ListView<>();
+        positionsListView.getItems().addAll(getAllPositions());
+        positionsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Label prioritiesLabel = new Label("Priorytety:");
+        ListView<StatsRaportGenerator.Priority> prioritiesListView = new ListView<>();
+        prioritiesListView.getItems().addAll(StatsRaportGenerator.Priority.values());
+        prioritiesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Button generateButton = new Button("Generuj");
+        generateButton.setOnAction(e -> generateStatsReport(
+                datePicker.getValue(),
+                periodComboBox.getValue(),
+                positionsListView.getSelectionModel().getSelectedItems(),
+                prioritiesListView.getSelectionModel().getSelectedItems()
+        ));
+
+        box.getChildren().addAll(
+                dateLabel, datePicker,
+                periodLabel, periodComboBox,
+                positionsLabel, positionsListView,
+                prioritiesLabel, prioritiesListView,
+                generateButton
+        );
+        tab.setContent(box);
+        return tab;
+    }
+
+    private void generateStatsReport(LocalDate reportDate, StatsRaportGenerator.PeriodType periodType,
+                                     List<String> selectedPositions, List<StatsRaportGenerator.Priority> selectedPriorities) {
+        if (reportDate == null) {
+            showAlert(Alert.AlertType.ERROR, "Błąd", "Brak daty raportu.");
+            return;
+        }
+
+        String outputPath = ConfigManager.getReportPath() + "/StatsReport_" + LocalDate.now() + ".pdf";
+        ensureDirectoryExists(ConfigManager.getReportPath());
+
+        StatsRaportGenerator generator = new StatsRaportGenerator();
+        generator.setTaskData(getTaskData());
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                generator.generateReport(outputPath, reportDate, periodType, selectedPositions, selectedPriorities);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
+        executor.execute(task);
+    }
+
+    // Zakładka dla raportu sprzedaży
+    private Tab createSalesTab() {
+        Tab tab = new Tab("Sprzedaż");
+        tab.setClosable(false);
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+
+        Label periodLabel = new Label("Okres:");
+        ComboBox<SalesReportGenerator.PeriodType> periodComboBox = new ComboBox<>();
+        periodComboBox.getItems().addAll(SalesReportGenerator.PeriodType.values());
+        periodComboBox.setValue(SalesReportGenerator.PeriodType.MONTHLY);
+
+        Label categoriesLabel = new Label("Kategorie:");
+        ListView<String> categoriesListView = new ListView<>();
+        categoriesListView.getItems().addAll(getAllCategories());
+        categoriesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        Button generateButton = new Button("Generuj");
+        generateButton.setOnAction(e -> generateSalesReport(
+                periodComboBox.getValue(),
+                categoriesListView.getSelectionModel().getSelectedItems()
+        ));
+
+        box.getChildren().addAll(periodLabel, periodComboBox, categoriesLabel, categoriesListView, generateButton);
+        tab.setContent(box);
+        return tab;
+    }
+
+    private void generateSalesReport(SalesReportGenerator.PeriodType periodType, List<String> selectedCategories) {
+        String outputPath = ConfigManager.getReportPath() + "/SalesReport_" + LocalDate.now() + ".pdf";
+        ensureDirectoryExists(ConfigManager.getReportPath());
+
+        SalesReportGenerator generator = new SalesReportGenerator();
+        generator.setSalesData(getSalesData());
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                generator.generateReport(outputPath, periodType, selectedCategories);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
+        executor.execute(task);
+    }
+
+    // Pomocnicza metoda do tworzenia katalogu
+    private void ensureDirectoryExists(String dirPath) {
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
     }
 
-
-
-
-    /** Pomocnicza metoda: ścieżka do zasobu w classpath */
-    private String getResourcePath(String resourceName) {
-        return getClass().getClassLoader().getResource(resourceName).getPath();
+    private List<WorkloadReportGenerator.EmployeeWorkload> getWorkloadData() {
+        WorkloadRepository repo = new WorkloadRepository();
+        return repo.getAllWorkloadRecords();
     }
 
-    private void showAlert(String title, String msg) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
+    private List<Product> getProducts() {
+        ProductRepository repo = new ProductRepository();
+        return repo.getAllProducts();
     }
+
+    private List<TaskRaportGenerator.TaskRecord> getTaskData() {
+        TaskRepository repo = new TaskRepository();
+        return repo.getAllTasks();
+    }
+
+    private List<SalesReportGenerator.SalesRecord> getSalesData() {
+        SalesRepository repo = new SalesRepository();
+        return repo.getAllSales();
+    }
+
+    private List<String> getAllPositions() {
+        List<String> positions = new ArrayList<>();
+        String query = "SELECT DISTINCT Stanowisko FROM Pracownicy WHERE usuniety = FALSE";
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/" + ILacz.DB_NAME + "?useSSL=false",
+                ILacz.MYSQL_USER, ILacz.MYSQL_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                positions.add(rs.getString("Stanowisko"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return positions;
+    }
+
+    private List<String> getAllCategories() {
+        List<String> categories = new ArrayList<>();
+        String query = "SELECT DISTINCT Kategoria FROM Produkty";
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/" + ILacz.DB_NAME + "?useSSL=false",
+                ILacz.MYSQL_USER, ILacz.MYSQL_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                categories.add(rs.getString("Kategoria"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return categories;
+    }
+
 }

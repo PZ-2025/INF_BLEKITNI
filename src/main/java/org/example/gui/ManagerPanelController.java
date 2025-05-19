@@ -15,7 +15,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.example.database.AbsenceRequestRepository;
-import org.example.database.TaskRepository;
+import org.example.repository.TaskRepository;
 import org.example.database.UserRepository;
 import org.example.sys.AbsenceRequest;
 import org.example.sys.Employee;
