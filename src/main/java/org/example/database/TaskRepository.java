@@ -123,6 +123,50 @@ public class TaskRepository {
         }
     }
 
+    public boolean isEmployeeAssigned(int employeeId, int taskId) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            Long count = em.createQuery(
+                            "SELECT COUNT(t) FROM Task t JOIN t.employees e WHERE e.id = :employeeId AND t.id = :taskId",
+                            Long.class)
+                    .setParameter("employeeId", employeeId)
+                    .setParameter("taskId", taskId)
+                    .getSingleResult();
+            return count > 0;
+        } finally {
+            em.close();
+        }
+    }
+
+    public void assignEmployee(int employeeId, int taskId) {
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.createNativeQuery("INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania) VALUES (?, ?)")
+                    .setParameter(1, employeeId)
+                    .setParameter(2, taskId)
+                    .executeUpdate();
+            tx.commit();
+        } finally {
+            if (tx.isActive()) tx.rollback();
+            em.close();
+        }
+    }
+
+    public boolean isEmployeeAssignedToAnyTask(int employeeId) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            Long count = em.createQuery(
+                            "SELECT COUNT(t) FROM Task t JOIN t.employees e WHERE e.id = :employeeId", Long.class)
+                    .setParameter("employeeId", employeeId)
+                    .getSingleResult();
+            return count > 0;
+        } finally {
+            em.close();
+        }
+    }
+
     /**
      * Zamknięcie EntityManagerFactory.
      */

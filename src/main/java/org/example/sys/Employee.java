@@ -16,6 +16,8 @@ import org.example.wyjatki.AgeException;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Klasa reprezentująca pracownika w systemie.
@@ -53,9 +55,12 @@ public class Employee extends Person {
     @Temporal(TemporalType.DATE)
     private Date sickLeaveStartDate;
 
-    // Dodane pole do usuwania miękkiego
     @Column(name = "usuniety", nullable = false)
     private boolean usuniety = false;
+
+    // Relacja wiele-do-wielu z Task (Zadania)
+    @ManyToMany(mappedBy = "employees")
+    private Set<Task> tasks = new HashSet<>();
 
     public Employee() {}
 
@@ -85,14 +90,7 @@ public class Employee extends Person {
         this.sickLeaveStartDate = null;
     }
 
-    // Getter i setter dla pola 'usuniety'
-    public boolean isUsuniety() {
-        return usuniety;
-    }
-
-    public void setUsuniety(boolean usuniety) {
-        this.usuniety = usuniety;
-    }
+    // Gettery i settery
 
     public int getId() {
         return id;
@@ -156,13 +154,12 @@ public class Employee extends Person {
         this.onSickLeave = true;
     }
 
-    /**
-     * Sprawdza, czy pracownik ma rolę "root".
-     *
-     * @return true jeśli pracownik ma rolę "root", false w przeciwnym przypadku
-     */
-    public boolean isRoot() {
-        return "root".equalsIgnoreCase(this.stanowisko);
+    public boolean isUsuniety() {
+        return usuniety;
+    }
+
+    public void setUsuniety(boolean usuniety) {
+        this.usuniety = usuniety;
     }
 
     public Date getSickLeaveStartDate() {
@@ -172,5 +169,29 @@ public class Employee extends Person {
     public void endSickLeave() {
         this.onSickLeave = false;
         this.sickLeaveStartDate = null;
+    }
+
+    public boolean isRoot() {
+        return "root".equalsIgnoreCase(this.stanowisko);
+    }
+
+    public Set<Task> getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(Set<Task> tasks) {
+        this.tasks = tasks;
+    }
+
+    // Przydatne metody do obsługi relacji
+
+    public void addTask(Task task) {
+        tasks.add(task);
+        task.getEmployees().add(this);
+    }
+
+    public void removeTask(Task task) {
+        tasks.remove(task);
+        task.getEmployees().remove(this);
     }
 }

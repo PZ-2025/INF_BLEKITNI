@@ -81,6 +81,19 @@ public class AbsenceRequestRepository {
         }
     }
 
+    public List<AbsenceRequest> pobierzZatwierdzoneWnioski(int employeeId) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                            "SELECT a FROM AbsenceRequest a WHERE a.pracownik.id = :employeeId AND a.opis LIKE '%ZATWIERDZONY%'",
+                            AbsenceRequest.class)
+                    .setParameter("employeeId", employeeId)
+                    .getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
     public void close() {
         if (emf.isOpen()) {
             emf.close();

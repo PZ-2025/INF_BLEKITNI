@@ -9,6 +9,8 @@ package org.example.sys;
 
 import jakarta.persistence.*;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Reprezentuje zadanie w systemie.
@@ -32,21 +34,19 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String opis;
 
-    /**
-     * Konstruktor bezparametrowy wymagany przez JPA.
-     */
+    // Relacja wiele-do-wielu z Employee (Pracownicy)
+    @ManyToMany
+    @JoinTable(
+            name = "Zadania_Pracownicy",
+            joinColumns = @JoinColumn(name = "Id_zadania"),
+            inverseJoinColumns = @JoinColumn(name = "Id_pracownika")
+    )
+    private Set<Employee> employees = new HashSet<>();
+
     public Task() {
-        // Pusty konstruktor
+        // Pusty konstruktor wymagany przez JPA
     }
 
-    /**
-     * Konstruktor pełny.
-     *
-     * @param nazwa  nazwa zadania
-     * @param data   termin wykonania
-     * @param status status zadania
-     * @param opis   opis zadania
-     */
     public Task(String nazwa, Date data, String status, String opis) {
         this.nazwa = nazwa;
         this.data = data;
@@ -54,7 +54,7 @@ public class Task {
         this.opis = opis;
     }
 
-    // ==================== Gettery i Settery ====================
+    // Gettery i settery
 
     public int getId() {
         return id;
@@ -92,17 +92,30 @@ public class Task {
         this.opis = opis;
     }
 
-    /**
-     * Zwraca reprezentację tekstową zadania.
-     *
-     * @return opis zadania
-     */
+    public Set<Employee> getEmployees() {
+        return employees;
+    }
+
+    public void setEmployees(Set<Employee> employees) {
+        this.employees = employees;
+    }
+
+    // Przydatne metody do obsługi relacji
+
+    public void addEmployee(Employee employee) {
+        employees.add(employee);
+        employee.getTasks().add(this);
+    }
+
+    public void removeEmployee(Employee employee) {
+        employees.remove(employee);
+        employee.getTasks().remove(this);
+    }
+
     @Override
     public String toString() {
-        return String.format(
-                "Zadanie: %s, Termin: %s",
+        return String.format("Zadanie: %s, Termin: %s",
                 nazwa,
-                data != null ? data.toString() : "brak daty"
-        );
+                data != null ? data.toString() : "brak daty");
     }
 }

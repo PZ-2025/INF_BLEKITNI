@@ -22,6 +22,7 @@ import org.example.sys.Employee;
 import org.example.sys.Task;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * Kontroler logiki interfejsu użytkownika dla panelu kierownika.
@@ -424,15 +425,44 @@ public class ManagerPanelController {
         dialogLayout.setAlignment(Pos.CENTER);
 
         Label taskLabel = new Label("Wybierz zadanie:");
-        ComboBox<String> taskComboBox = new ComboBox<>();
-        taskRepository.pobierzWszystkieZadania()
-                .forEach(t -> taskComboBox.getItems().add(t.getNazwa()));
+        ComboBox<Task> taskComboBox = new ComboBox<>();
+        taskComboBox.getItems().addAll(taskRepository.pobierzWszystkieZadania());
+
+        // Konfiguracja wyświetlania nazw zadań w ComboBox
+        taskComboBox.setCellFactory(param -> new ListCell<Task>() {
+            @Override
+            protected void updateItem(Task task, boolean empty) {
+                super.updateItem(task, empty);
+                setText(empty || task == null ? null : task.getNazwa());
+            }
+        });
+        taskComboBox.setButtonCell(new ListCell<Task>() {
+            @Override
+            protected void updateItem(Task task, boolean empty) {
+                super.updateItem(task, empty);
+                setText(empty || task == null ? null : task.getNazwa());
+            }
+        });
 
         Label employeeLabel = new Label("Wybierz pracownika:");
-        ComboBox<String> employeeComboBox = new ComboBox<>();
-        userRepository.pobierzWszystkichPracownikow().forEach(p ->
-                employeeComboBox.getItems().add(p.getName() + " " + p.getSurname())
-        );
+        ComboBox<Employee> employeeComboBox = new ComboBox<>();
+        employeeComboBox.getItems().addAll(userRepository.pobierzWszystkichPracownikow());
+
+        // Konfiguracja wyświetlania nazw pracowników w ComboBox
+        employeeComboBox.setCellFactory(param -> new ListCell<Employee>() {
+            @Override
+            protected void updateItem(Employee employee, boolean empty) {
+                super.updateItem(employee, empty);
+                setText(empty || employee == null ? null : employee.getName() + " " + employee.getSurname());
+            }
+        });
+        employeeComboBox.setButtonCell(new ListCell<Employee>() {
+            @Override
+            protected void updateItem(Employee employee, boolean empty) {
+                super.updateItem(employee, empty);
+                setText(empty || employee == null ? null : employee.getName() + " " + employee.getSurname());
+            }
+        });
 
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER);
@@ -441,15 +471,43 @@ public class ManagerPanelController {
         Button cancelButton = new Button("Anuluj");
 
         assignButton.setOnAction(e -> {
-            if (taskComboBox.getValue() != null && employeeComboBox.getValue() != null) {
-                System.out.println(
-                        "Przypisano: " + employeeComboBox.getValue() +
-                                " do " + taskComboBox.getValue()
-                );
+            Task selectedTask = taskComboBox.getValue();
+            Employee selectedEmployee = employeeComboBox.getValue();
+
+            if (selectedTask == null || selectedEmployee == null) {
+                showAlert(Alert.AlertType.WARNING, "Błąd", "Wybierz zarówno zadanie, jak i pracownika.");
+                return;
+            }
+
+            if (selectedEmployee.isOnSickLeave()) {
+                showAlert(Alert.AlertType.WARNING, "Błąd", "Pracownik jest obecnie na zwolnieniu lekarskim.");
+                return;
+            }
+
+            AbsenceRequestRepository absenceRepo = new AbsenceRequestRepository();
+            List<AbsenceRequest> absences = absenceRepo.pobierzZatwierdzoneWnioski(selectedEmployee.getId());
+            boolean hasConflict = absences.stream().anyMatch(absence ->
+                    selectedTask.getData().after(absence.getDataRozpoczecia()) &&
+                            selectedTask.getData().before(absence.getDataZakonczenia())
+            );
+            absenceRepo.close();
+
+            if (hasConflict) {
+                showAlert(Alert.AlertType.WARNING, "Błąd", "Pracownik ma zaplanowaną nieobecność w terminie zadania.");
+                return;
+            }
+
+            if (taskRepository.isEmployeeAssignedToAnyTask(selectedEmployee.getId())) {
+                showAlert(Alert.AlertType.WARNING, "Błąd", "Pracownik jest już przypisany do innego zadania.");
+                return;
+            }
+
+            try {
+                taskRepository.assignEmployee(selectedEmployee.getId(), selectedTask.getId());
+                showAlert(Alert.AlertType.INFORMATION, "Sukces", "Pracownik został przypisany do zadania.");
                 dialogStage.close();
-            } else {
-                showAlert(Alert.AlertType.WARNING, "Błąd",
-                        "Wybierz zarówno zadanie, jak i pracownika.");
+            } catch (Exception ex) {
+                showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd podczas przypisywania: " + ex.getMessage());
             }
         });
 
@@ -462,7 +520,7 @@ public class ManagerPanelController {
                 buttonBox
         );
 
-        Scene scene = new Scene(dialogLayout, 300, 250);
+        Scene scene = new Scene(dialogLayout, 350, 250);
         dialogStage.setScene(scene);
         dialogStage.showAndWait();
     }
