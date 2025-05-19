@@ -6,8 +6,8 @@ module org.example.gui {
     requires org.controlsfx.controls;
     requires com.dlsc.formsfx;
     requires net.synedra.validatorfx;
-    requires org.kordamp.ikonli.javafx;
-    requires org.kordamp.bootstrapfx.core;
+//    requires org.kordamp.ikonli.javafx;
+//    requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
     requires java.mail;
@@ -21,9 +21,11 @@ module org.example.gui {
     requires java.desktop;
     requires kernel;
     requires layout;
+    requires org.apache.pdfbox;
 
     opens org.example.gui to javafx.fxml;
     opens org.example.sys to javafx.base, javafx.fxml, org.hibernate.orm.core, jakarta.persistence;
+    opens org.example.pdflib to javafx.fxml;
 
     exports org.example.gui;
     exports org.example.sys;
