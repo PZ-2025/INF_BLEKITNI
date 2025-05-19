@@ -11,7 +11,7 @@ package org.example.gui;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
-public class StorageRaportsPanel extends Application {
+public class StorageReportsPanel extends Application {
 
     public static void main(String[] args) {
         launch(args);
