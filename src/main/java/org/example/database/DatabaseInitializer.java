@@ -1,72 +1,121 @@
 /*
  * Classname: DatabaseInitializer
- * Version information: 1.1
- * Date: 2025-04-11
+ * Version information: 1.2
+ * Date: 2025-05-17
  * Copyright notice: © BŁĘKITNI
  */
 
 package org.example.database;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.io.IOException;
 
+/**
+ * Klasa odpowiedzialna za inicjalizację bazy danych.
+ * Tworzy bazę danych jeśli nie istnieje i importuje strukturę z pliku SQL.
+ */
 public class DatabaseInitializer implements ILacz {
-    private static final Logger logger = LogManager.getLogger(DatabaseInitializer.class);
 
-    public static void initialize() {
-        // Połączenie do serwera MySQL (bez wskazania konkretnej bazy)
-        logger.info("Rozpoczynam inicjalizację bazy danych");
-        try (Connection conn = DriverManager.getConnection(MYSQL_SERVER_URL, MYSQL_USER, MYSQL_PASSWORD)) {
-            logger.debug("Połączenie do serwera MySQL nawiązane: {}", MYSQL_SERVER_URL);
-            logger.info("Tworzenie bazy danych: {}", DB_NAME);
+    /**
+     * Inicjalizuje bazę danych, tworząc ją jeśli nie istnieje i importując strukturę z pliku SQL.
+     *
+     * @throws SQLException jeśli wystąpi błąd podczas operacji na bazie danych
+     * @throws IOException jeśli wystąpi błąd podczas odczytu pliku SQL
+     */
+    public static void initialize() throws SQLException, IOException {
+        Connection serverConn = null;
+        Statement serverStmt = null;
+        Connection dbConn = null;
 
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
-                logger.info("Baza danych '{}' utworzona lub już istnieje", DB_NAME);
-            }
+        try {
+            // Rejestracja sterownika JDBC
+            Class.forName("com.mysql.cj.jdbc.Driver");
 
-        } catch (Exception e) {
-            logger.error("Błąd podczas tworzenia bazy danych '{}'", DB_NAME, e);
-            return;
-        }
+            // Krok 1: Połączenie do serwera MySQL (bez konkretnej bazy)
+            serverConn = DriverManager.getConnection(MYSQL_SERVER_URL, MYSQL_USER, MYSQL_PASSWORD);
 
-        // Połączenie do właściwej bazy danych + import danych
-        try (Connection conn = DriverManager.getConnection(MYSQL_DB_URL, MYSQL_USER, MYSQL_PASSWORD)) {
-            logger.debug("Połączenie do bazy '{}' nawiązane: {}", DB_NAME, MYSQL_DB_URL);
-            logger.info("Importowanie pliku SQL: src/main/resources/Stonka.sql");
-            executeSqlScript(conn, "src/main/resources/Stonka.sql");
-            logger.info("Import danych zakończony pomyślnie. Baza '{}' gotowa.", DB_NAME);
-        } catch (Exception e) {
-            logger.error("Błąd podczas importowania danych do bazy '{}'", DB_NAME, e);
+            // Krok 2: Tworzenie bazy danych, jeśli nie istnieje
+            serverStmt = serverConn.createStatement();
+            serverStmt.execute("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
+
+            // Krok 3: Połączenie z nowo utworzoną bazą danych
+            dbConn = DriverManager.getConnection(MYSQL_DB_URL, MYSQL_USER, MYSQL_PASSWORD);
+
+            // Krok 4: Import struktury z pliku SQL
+            executeSqlScript(dbConn, "src/main/resources/Stonka.sql");
+
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("Nie znaleziono sterownika JDBC MySQL.", e);
+        } catch (SQLException | IOException e) {
+            throw e; // rethrow bezpośrednio, jeśli już są odpowiednie typy
+        } finally {
+            closeQuietly(serverStmt);
+            closeQuietly(serverConn);
+            closeQuietly(dbConn);
         }
     }
+
 
     /**
      * Wykonuje skrypt SQL wczytany z pliku.
      *
      * @param conn     Połączenie z bazą danych
      * @param filePath Ścieżka do pliku SQL
-     * @throws Exception w przypadku błędu odczytu lub wykonania zapytania
+     * @throws SQLException w przypadku błędu wykonania zapytania
+     * @throws IOException w przypadku błędu odczytu pliku
      */
-    private static void executeSqlScript(Connection conn, String filePath) throws Exception {
-        logger.debug("Wczytywanie skryptu SQL z pliku: {}", filePath);
+    private static void executeSqlScript(Connection conn, String filePath) throws SQLException, IOException {
         String sql = new String(Files.readAllBytes(Paths.get(filePath)));
         String[] statements = sql.split(";");
 
-        try (Statement stmt = conn.createStatement()) {
+        Statement stmt = null;
+        try {
+            stmt = conn.createStatement();
             for (String s : statements) {
                 String trimmed = s.trim();
                 if (!trimmed.isEmpty()) {
-                    logger.trace("Wykonuję zapytanie SQL: {}", trimmed.replaceAll("\\s+", " "));
                     stmt.execute(trimmed);
                 }
             }
+        } finally {
+            closeQuietly(stmt);
         }
-        logger.debug("Wszystkie polecenia SQL z pliku {} zostały wykonane", filePath);
+    }
+
+    /**
+     * Bezpiecznie zamyka obiekt Statement, ignorując ewentualne wyjątki.
+     *
+     * @param stmt obiekt Statement do zamknięcia
+     */
+    private static void closeQuietly(Statement stmt) {
+        if (stmt != null) {
+            try {
+                stmt.close();
+            } catch (SQLException e) {
+                // Ignoruj błędy podczas zamykania
+                System.err.println("Ostrzeżenie: Nie można zamknąć obiektu Statement: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Bezpiecznie zamyka obiekt Connection, ignorując ewentualne wyjątki.
+     *
+     * @param conn obiekt Connection do zamknięcia
+     */
+    private static void closeQuietly(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                // Ignoruj błędy podczas zamykania
+                System.err.println("Ostrzeżenie: Nie można zamknąć połączenia z bazą danych: " + e.getMessage());
+            }
+        }
     }
 }
