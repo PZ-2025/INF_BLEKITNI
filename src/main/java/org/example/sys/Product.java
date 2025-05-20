@@ -1,9 +1,11 @@
 package org.example.sys;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "Produkty")
+@Access(AccessType.FIELD)
 public class Product {
 
     @Id
@@ -17,26 +19,23 @@ public class Product {
     @Column(name = "Kategoria", nullable = false, length = 100)
     private String category;
 
+    // Zmieniamy typ na BigDecimal
     @Column(name = "Cena", nullable = false, precision = 10, scale = 2)
-    private double price;
+    private BigDecimal price;
 
-    public Product() {
-    }
+    public Product() {}
 
     public Product(String name, String category, double price) {
         this.name = name;
         this.category = category;
-        this.price = price;
+        // konwersja z double na BigDecimal
+        this.price = BigDecimal.valueOf(price);
     }
 
     // === Gettery i settery ===
 
     public int getId() {
         return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public String getName() {
@@ -55,12 +54,12 @@ public class Product {
         this.category = category;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
-        if (price >= 0) {
+    public void setPrice(BigDecimal price) {
+        if (price != null && price.compareTo(BigDecimal.ZERO) >= 0) {
             this.price = price;
         }
     }

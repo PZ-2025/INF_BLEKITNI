@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.example.sys.Product;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class ProductRepository {
@@ -135,14 +136,14 @@ public class ProductRepository {
     }
 
     /** Aktualizuje cenę produktu. */
-    public void aktualizujCeneProduktu(int id, double nowaCena) {
+    public void aktualizujCeneProduktu(int id, BigDecimal nowaCena) {
         logger.debug("aktualizujCeneProduktu() – start, id={}, nowaCena={}", id, nowaCena);
         EntityManager em = emf.createEntityManager();
         EntityTransaction tx = em.getTransaction();
         try {
             tx.begin();
             Product p = em.find(Product.class, id);
-            if (p != null && nowaCena >= 0) {
+            if (p != null && nowaCena.compareTo(BigDecimal.ZERO) >= 0) {
                 p.setPrice(nowaCena);
                 em.merge(p);
                 logger.info("aktualizujCeneProduktu() – cena zaktualizowana: {}", p);
@@ -184,12 +185,13 @@ public class ProductRepository {
     }
 
     /** Pobiera produkty w przedziale cenowym [min, max]. */
-    public List<Product> pobierzProduktyWZakresieCenowym(double minCena, double maxCena) {
+    public List<Product> pobierzProduktyWZakresieCenowym(BigDecimal minCena, BigDecimal maxCena) {
         logger.debug("pobierzProduktyWZakresieCenowym() – start, minCena={}, maxCena={}", minCena, maxCena);
         EntityManager em = emf.createEntityManager();
         try {
             List<Product> list = em.createQuery(
-                            "SELECT p FROM Product p WHERE p.price BETWEEN :min AND :max", Product.class)
+                            "SELECT p FROM Product p WHERE p.price BETWEEN :min AND :max",
+                            Product.class)
                     .setParameter("min", minCena)
                     .setParameter("max", maxCena)
                     .getResultList();
@@ -228,7 +230,7 @@ public class ProductRepository {
     }
 
     /** Znajduje produkty o dokładnej cenie. */
-    public List<Product> znajdzPoCenieDokladnej(double cena) {
+    public List<Product> znajdzPoCenieDokladnej(BigDecimal cena) {
         logger.debug("znajdzPoCenieDokladnej() – cena={}", cena);
         EntityManager em = emf.createEntityManager();
         try {
@@ -247,8 +249,8 @@ public class ProductRepository {
         }
     }
 
-    /** Znajduje produkty o cenie >= minCena. */
-    public List<Product> znajdzPoCenieMin(double minCena) {
+    /** Znajduje produkty o cenie ≥ minCena. */
+    public List<Product> znajdzPoCenieMin(BigDecimal minCena) {
         logger.debug("znajdzPoCenieMin() – minCena={}", minCena);
         EntityManager em = emf.createEntityManager();
         try {
@@ -267,8 +269,8 @@ public class ProductRepository {
         }
     }
 
-    /** Znajduje produkty o cenie <= maxCena. */
-    public List<Product> znajdzPoCenieMax(double maxCena) {
+    //** Znajduje produkty o cenie ≤ maxCena. */
+    public List<Product> znajdzPoCenieMax(BigDecimal maxCena) {
         logger.debug("znajdzPoCenieMax() – maxCena={}", maxCena);
         EntityManager em = emf.createEntityManager();
         try {

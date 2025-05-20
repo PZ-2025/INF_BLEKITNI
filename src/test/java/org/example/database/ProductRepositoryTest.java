@@ -3,6 +3,7 @@ package org.example.database;
 import org.example.sys.Product;
 import org.junit.jupiter.api.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -61,21 +62,27 @@ class ProductRepositoryTest {
     @Order(3)
     void testUpdatePrice() {
         // update price of p2
-        assertDoesNotThrow(() -> repo.aktualizujCeneProduktu(p2.getId(), 10.99));
+        assertDoesNotThrow(() ->
+                repo.aktualizujCeneProduktu(p2.getId(), BigDecimal.valueOf(10.99))
+        );
         Product reloaded = repo.znajdzProduktPoId(p2.getId());
-        assertEquals(10.99, reloaded.getPrice(), 0.001);
+        assertEquals(BigDecimal.valueOf(10.99), reloaded.getPrice());
     }
+
 
     @Test
     @Order(4)
     void testQueries() {
-        // exact category match "Nabiał" (should find p3 but not p1, since p1 was retagged)
+        // exact category match "Nabiał"
         List<Product> dairy = repo.pobierzProduktyPoKategorii("Nabiał");
         assertTrue(dairy.stream().anyMatch(p -> p.getId() == p3.getId()));
         assertFalse(dairy.stream().anyMatch(p -> p.getId() == p1.getId()));
 
-        // price range [5.00, 11.00] should include p1 and not include p2 (now 10.99) and p3 (4.50)
-        List<Product> range = repo.pobierzProduktyWZakresieCenowym(5.00, 11.00);
+        // price range [5.00, 11.00]
+        List<Product> range = repo.pobierzProduktyWZakresieCenowym(
+                BigDecimal.valueOf(5.00),
+                BigDecimal.valueOf(11.00)
+        );
         assertTrue(range.stream().anyMatch(p -> p.getId() == p1.getId()));
         assertTrue(range.stream().anyMatch(p -> p.getId() == p2.getId()));
         assertFalse(range.stream().anyMatch(p -> p.getId() == p3.getId()));
@@ -89,25 +96,33 @@ class ProductRepositoryTest {
         assertNull(repo.znajdzProduktPoId(p2.getId()), "p2 should be deleted");
     }
 
+
     @Test
     @Order(5)
     void testAdditionalSearches() {
-        // name contains "M" (case-insensitive) should find p3 ("Mleko")
+        // name contains "M"
         List<Product> nameM = repo.znajdzPoNazwie("m");
         assertTrue(nameM.stream().anyMatch(p -> p.getId() == p3.getId()));
 
         // exact price 4.50
-        List<Product> priceExact = repo.znajdzPoCenieDokladnej(4.50);
+        List<Product> priceExact = repo.znajdzPoCenieDokladnej(BigDecimal.valueOf(4.50));
         assertTrue(priceExact.stream().anyMatch(p -> p.getId() == p3.getId()));
 
         // price >= 6.00
-        List<Product> priceMin = repo.znajdzPoCenieMin(6.00);
-        assertTrue(priceMin.stream().anyMatch(p -> p.getPrice() >= 6.00));
+        List<Product> priceMin = repo.znajdzPoCenieMin(BigDecimal.valueOf(6.00));
+        assertTrue(
+                priceMin.stream()
+                        .anyMatch(p -> p.getPrice().compareTo(BigDecimal.valueOf(6.00)) >= 0)
+        );
 
         // price <= 11.00
-        List<Product> priceMax = repo.znajdzPoCenieMax(11.00);
-        assertTrue(priceMax.stream().allMatch(p -> p.getPrice() <= 11.00));
+        List<Product> priceMax = repo.znajdzPoCenieMax(BigDecimal.valueOf(11.00));
+        assertTrue(
+                priceMax.stream()
+                        .allMatch(p -> p.getPrice().compareTo(BigDecimal.valueOf(11.00)) <= 0)
+        );
     }
+
 
     @AfterAll
     static void tearDown() {

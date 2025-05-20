@@ -338,7 +338,9 @@ public class CashierPanelController {
         table.setMinHeight(300);
 
         TableColumn<TransactionItem, String> nameCol = new TableColumn<>("Nazwa");
-        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getProduct().getName()));
+        nameCol.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getProduct().getName())
+        );
 
         TableColumn<TransactionItem, Integer> quantityCol = new TableColumn<>("Ilość");
         quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
@@ -352,23 +354,29 @@ public class CashierPanelController {
                 updateTotalPrice(table.getItems(), null);
             } else {
                 table.refresh();
-                showNotification("Błąd", "Nieprawidłowa ilość. Maksymalna dostępna ilość: " + maxQuantity);
+                showNotification("Błąd",
+                        "Nieprawidłowa ilość. Maksymalna dostępna ilość: " + maxQuantity);
             }
         });
 
         TableColumn<TransactionItem, Double> priceCol = new TableColumn<>("Cena jedn.");
         priceCol.setCellValueFactory(cellData ->
-                new SimpleDoubleProperty(cellData.getValue().getProduct().getPrice()).asObject());
+                new SimpleDoubleProperty(
+                        cellData.getValue().getProduct().getPrice().doubleValue()
+                ).asObject()
+        );
 
         TableColumn<TransactionItem, Double> totalCol = new TableColumn<>("Suma");
         totalCol.setCellValueFactory(cellData ->
-                new SimpleDoubleProperty(cellData.getValue().getProduct().getPrice() *
-                        cellData.getValue().getQuantity()).asObject());
+                new SimpleDoubleProperty(
+                        cellData.getValue().getProduct().getPrice().doubleValue() *
+                                cellData.getValue().getQuantity()
+                ).asObject()
+        );
 
         TableColumn<TransactionItem, Void> actionCol = new TableColumn<>("Akcje");
         actionCol.setCellFactory(param -> new TableCell<>() {
             private final Button removeButton = new Button("Usuń");
-
             {
                 removeButton.setStyle("-fx-background-color: #E74C3C; -fx-text-fill: white;");
                 removeButton.setOnAction(event -> {
@@ -377,7 +385,6 @@ public class CashierPanelController {
                     updateTotalPrice(getTableView().getItems(), null);
                 });
             }
-
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
@@ -393,7 +400,7 @@ public class CashierPanelController {
     private void updateTotalPrice(ObservableList<TransactionItem> items, Label totalPriceLabel) {
         double total = 0;
         for (TransactionItem item : items) {
-            total += item.getProduct().getPrice() * item.getQuantity();
+            total += item.getProduct().getPrice().doubleValue() * item.getQuantity();
         }
         if (totalPriceLabel != null) {
             totalPriceLabel.setText(String.format("%.2f zł", total));
@@ -466,20 +473,8 @@ public class CashierPanelController {
             this.quantity = quantity;
         }
 
-        public Product getProduct() {
-            return product;
-        }
-
-        public int getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(int quantity) {
-            this.quantity = quantity;
-        }
-
-        public double getTotal() {
-            return product.getPrice() * quantity;
-        }
+        public Product getProduct() { return product; }
+        public int getQuantity() { return quantity; }
+        public void setQuantity(int quantity) { this.quantity = quantity; }
     }
 }

@@ -220,7 +220,7 @@ INSERT INTO Zadania (Nazwa, Data, Status, Opis, czas_trwania_zmiany) VALUES
 ('Porządkowanie zaplecza',     '2025-04-08', 'Zakończone','Czyszczenie i sortowanie towarów',    '01:30:00');
 
 -- Zadania_Pracownicy
-INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania, czas_trwania_zmiany) VALUES
+INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania) VALUES
 (1, 1),
 (2, 2),
 (3, 3),

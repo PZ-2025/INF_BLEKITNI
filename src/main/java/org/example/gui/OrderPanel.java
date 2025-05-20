@@ -91,16 +91,37 @@ public class OrderPanel extends VBox {
      * Załadowanie przykładowych danych do tabeli.
      */
     private void loadSampleData() {
+        // Tworzymy sample produkty
         Product p1 = new Product("Mleko 1L", "Nabiał", 2.99);
         Product p2 = new Product("Chleb pszenny", "Pieczywo", 3.49);
         Product p3 = new Product("Jajka L", "Nabiał", 5.99);
 
+        // Sample pracownik
         Employee emp = new Employee();
         emp.setLogin("admin");
 
-        Order o1 = new Order(p1, emp, 50, BigDecimal.valueOf(p1.getPrice() * 50), new Date());
-        Order o2 = new Order(p2, emp, 100, BigDecimal.valueOf(p2.getPrice() * 100), new Date());
-        Order o3 = new Order(p3, emp, 30, BigDecimal.valueOf(p3.getPrice() * 30), new Date());
+        // Poprawne mnożenie BigDecimal:
+        Order o1 = new Order(
+                p1,
+                emp,
+                50,
+                p1.getPrice().multiply(BigDecimal.valueOf(50)),
+                new Date()
+        );
+        Order o2 = new Order(
+                p2,
+                emp,
+                100,
+                p2.getPrice().multiply(BigDecimal.valueOf(100)),
+                new Date()
+        );
+        Order o3 = new Order(
+                p3,
+                emp,
+                30,
+                p3.getPrice().multiply(BigDecimal.valueOf(30)),
+                new Date()
+        );
 
         ordersData = FXCollections.observableArrayList(o1, o2, o3);
         ordersTable.setItems(ordersData);

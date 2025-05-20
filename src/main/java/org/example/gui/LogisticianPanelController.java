@@ -244,7 +244,7 @@ public class LogisticianPanelController {
                 pdfProducts.add(new sys.Product(
                         product.getName(),
                         product.getCategory(),
-                        product.getPrice()
+                        product.getPrice().doubleValue()
                 ));
             }
 
@@ -438,24 +438,26 @@ public class LogisticianPanelController {
                             // Filtrowanie po minimalnej cenie
                             if (!minPriceField.getText().isEmpty()) {
                                 try {
-                                    double minPrice = Double.parseDouble(minPriceField.getText().replace(",", "."));
-                                    if (product.getPrice() < minPrice) {
+                                    double minPrice = Double.parseDouble(
+                                            minPriceField.getText().replace(",", "."));
+                                    if (product.getPrice().doubleValue() < minPrice) {
                                         return false;
                                     }
                                 } catch (NumberFormatException ex) {
-                                    // Ignorowanie nieprawidłowego formatu
+                                    // ignorujemy nieprawidłowy format
                                 }
                             }
 
                             // Filtrowanie po maksymalnej cenie
                             if (!maxPriceField.getText().isEmpty()) {
                                 try {
-                                    double maxPrice = Double.parseDouble(maxPriceField.getText().replace(",", "."));
-                                    if (product.getPrice() > maxPrice) {
+                                    double maxPrice = Double.parseDouble(
+                                            maxPriceField.getText().replace(",", "."));
+                                    if (product.getPrice().doubleValue() > maxPrice) {
                                         return false;
                                     }
                                 } catch (NumberFormatException ex) {
-                                    // Ignorowanie nieprawidłowego formatu
+                                    // ignorujemy nieprawidłowy format
                                 }
                             }
 
