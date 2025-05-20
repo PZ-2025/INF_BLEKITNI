@@ -11,40 +11,54 @@ import java.util.List;
  */
 public class WorkloadRepository implements AutoCloseable {
 
-    private final EntityManagerFactory emf;
-
-    public WorkloadRepository() {
-        this.emf = Persistence.createEntityManagerFactory("myPU");
-    }
+    private final EntityManagerFactory emf =
+            Persistence.createEntityManagerFactory("myPU");
 
     /**
-     * Pobiera dane do raportu obciążenia dla zadanego zakresu dat.
+     * Zwraca listę EmployeeWorkload dla pracowników, którzy w okresie
+     * {@code startDate … endDate} mieli przypisane zadania.
      *
-     * @param startDate data początkowa
-     * @param endDate   data końcowa
-     * @return lista obiektów EmployeeWorkload
+     * Suma godzin jest obliczana w następujący sposób:
+     * <pre>
+     *   totalHours = Σ  COALESCE(zp.czas_trwania_zmiany , z.czas_trwania_zmiany)
+     * </pre>
+     * gdzie:
+     *  • {@code zp} – tabela łącznikowa Zadania_Pracownicy
+     *  • {@code z } – tabela Zadania
+     *
+     * @param startDate  data początkowa (włącznie)
+     * @param endDate    data końcowa    (włącznie)
      */
-    public List<EmployeeWorkload> getWorkloadData(LocalDate startDate, LocalDate endDate) {
+    public List<EmployeeWorkload> getWorkloadData(LocalDate startDate,
+                                                  LocalDate endDate) {
+
         EntityManager em = emf.createEntityManager();
         try {
             return em.createNativeQuery(
-                            // korzystamy z tekstowego bloku JDK 15+
+                            // language=SQL
                             """
                             SELECT
-                              CONCAT(p.Imie, ' ', p.Nazwisko) AS employeeName,
-                              p.Stanowisko                    AS department,
-                              ROUND(SUM(TIME_TO_SEC(zp.czas_trwania_zmiany)) / 3600, 2) AS totalHours
-                            FROM Pracownicy p
-                            JOIN Zadania_Pracownicy zp ON zp.Id_pracownika = p.Id
-                            JOIN Zadania z ON z.Id = zp.Id_zadania
-                            WHERE z.Data BETWEEN :startDate AND :endDate
-                            GROUP BY p.Id, p.Imie, p.Nazwisko, p.Stanowisko
+                              CONCAT(p.Imie, ' ', p.Nazwisko)                                        AS employeeName,
+                              p.Stanowisko                                                           AS department,
+                              ROUND(
+                                      SUM(
+                                          TIME_TO_SEC(
+                                              COALESCE(zp.czas_trwania_zmiany , z.czas_trwania_zmiany)
+                                          )
+                                      ) / 3600
+                                  , 2)                                                               AS totalHours
+                            FROM   Pracownicy          p
+                            JOIN   Zadania_Pracownicy  zp ON zp.Id_pracownika = p.Id
+                            JOIN   Zadania             z  ON z.Id            = zp.Id_zadania
+                            WHERE  z.Data BETWEEN :start AND :end
+                            GROUP  BY p.Id, p.Imie, p.Nazwisko, p.Stanowisko
+                            ORDER  BY p.Nazwisko, p.Imie
                             """,
-                            "EmployeeWorkloadMapping"
-                    )
-                    .setParameter("startDate", java.sql.Date.valueOf(startDate))
-                    .setParameter("endDate",   java.sql.Date.valueOf(endDate))
+                            "EmployeeWorkloadMapping")
+                    .setParameter("start", java.sql.Date.valueOf(startDate))
+                    .setParameter("end",   java.sql.Date.valueOf(endDate))
                     .getResultList();
+
         } finally {
             em.close();
         }
@@ -52,8 +66,6 @@ public class WorkloadRepository implements AutoCloseable {
 
     @Override
     public void close() {
-        if (emf.isOpen()) {
-            emf.close();
-        }
+        if (emf.isOpen()) emf.close();
     }
 }

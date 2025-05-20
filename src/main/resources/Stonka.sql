@@ -212,20 +212,20 @@ INSERT INTO StanyMagazynowe (Id_produktu, Ilosc) VALUES
 (10, 70);
 
 -- Zadania
-INSERT INTO Zadania (Nazwa, Data, Status, Opis) VALUES
-('Sprawdzenie stanu magazynu', '2025-04-01', 'Nowe',      'Weryfikacja towaru przed dostawą'),
-('Inwentaryzacja',             '2025-04-15', 'Nowe',      'Spis towarów'),
-('Dostawa mleka',              '2025-04-10', 'Zakończone','Odbiór dostawy'),
-('Wymiana regałów',            '2025-04-12', 'W trakcie', 'Wymiana regałów w dziale nabiałowym'),
-('Porządkowanie zaplecza',     '2025-04-08', 'Zakończone','Czyszczenie i sortowanie towarów');
+INSERT INTO Zadania (Nazwa, Data, Status, Opis, czas_trwania_zmiany) VALUES
+('Sprawdzenie stanu magazynu', '2025-04-01', 'Nowe',      'Weryfikacja towaru przed dostawą', NULL),
+('Inwentaryzacja',             '2025-04-15', 'Nowe',      'Spis towarów',                    '00:30:00'),
+('Dostawa mleka',              '2025-04-10', 'Zakończone','Odbiór dostawy',                  '01:15:00'),
+('Wymiana regałów',            '2025-04-12', 'W trakcie', 'Wymiana regałów w dziale nabiałowym', '02:45:00'),
+('Porządkowanie zaplecza',     '2025-04-08', 'Zakończone','Czyszczenie i sortowanie towarów',    '01:30:00');
 
 -- Zadania_Pracownicy
 INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania, czas_trwania_zmiany) VALUES
-(1, 1, NULL),
-(2, 2, NULL),
-(3, 3, NULL),
-(4, 4, NULL),
-(5, 5, NULL);
+(1, 1),
+(2, 2),
+(3, 3),
+(4, 4),
+(5, 5);
 
 -- Wnioski o nieobecność
 INSERT INTO Wnioski_o_nieobecnosc

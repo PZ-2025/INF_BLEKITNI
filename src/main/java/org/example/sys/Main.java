@@ -1,7 +1,7 @@
 package org.example.sys;
 
 // Jakub
-// klasa typowo do testów aktualnie jest puta
+// klasa typowo do testów aktualnie jest prawie pusta
 
 import org.example.wyjatki.PasswordException;
 import org.example.wyjatki.SalaryException;

@@ -1,7 +1,6 @@
 package org.example.sys;
 
 import jakarta.persistence.*;
-import org.example.sys.Employee;
 
 import java.time.LocalDate;
 
