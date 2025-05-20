@@ -1,19 +1,9 @@
-/*
- * Classname: TestAddressRepository
- * Version information: 1.0
- * Date: 2025-05-12
- * Copyright notice: © BŁĘKITNI
- */
-
 package org.example.database;
 
 import org.example.sys.Address;
 
 import java.util.List;
 
-/**
- * Klasa testująca działanie AddressRepository.
- */
 public class TestAddressRepository {
 
     public static void main(String[] args) {
@@ -39,11 +29,36 @@ public class TestAddressRepository {
             Address znaleziony = addressRepo.znajdzAdresPoId(address1.getId());
             System.out.println("\n>>> Adres po ID: " + znaleziony);
 
-            // === 4. Usunięcie adresu ===
-            addressRepo.usunAdres(address1.getId());
-            System.out.println(">>> Usunięto adres.");
+            // === 4. Wyszukiwanie po miejscowości ===
+            List<Address> poMiejscowosci = addressRepo.znajdzPoMiejscowosci("Testowo");
+            System.out.println("\n>>> Wyszukiwanie po miejscowości 'Testowo':");
+            wypiszAdresy(poMiejscowosci);
 
-            // === 5. Wyświetlenie po usunięciu ===
+            // === 5. Wyszukiwanie po numerze domu ===
+            List<Address> poNumerzeDomu = addressRepo.znajdzPoNumerzeDomu("10B");
+            System.out.println("\n>>> Wyszukiwanie po numerze domu '10B':");
+            wypiszAdresy(poNumerzeDomu);
+
+            // === 6. Wyszukiwanie po numerze mieszkania ===
+            List<Address> poNumerzeMieszkania = addressRepo.znajdzPoNumerzeMieszkania("3");
+            System.out.println("\n>>> Wyszukiwanie po numerze mieszkania '3':");
+            wypiszAdresy(poNumerzeMieszkania);
+
+            // === 7. Wyszukiwanie po kodzie pocztowym ===
+            List<Address> poKodPocztowy = addressRepo.znajdzPoKodPocztowym("99-999");
+            System.out.println("\n>>> Wyszukiwanie po kodzie pocztowym '99-999':");
+            wypiszAdresy(poKodPocztowy);
+
+            // === 8. Wyszukiwanie po mieście ===
+            List<Address> poMiescie = addressRepo.znajdzPoMiescie("Miastko");
+            System.out.println("\n>>> Wyszukiwanie po mieście 'Miastko':");
+            wypiszAdresy(poMiescie);
+
+            // === 9. Usunięcie adresu ===
+            addressRepo.usunAdres(address1.getId());
+            System.out.println("\n>>> Usunięto adres.");
+
+            // === 10. Lista po usunięciu ===
             System.out.println("\n>>> Lista adresów po usunięciu:");
             wypiszAdresy(addressRepo.pobierzWszystkieAdresy());
 
@@ -54,21 +69,18 @@ public class TestAddressRepository {
         }
     }
 
-    /**
-     * Pomocnicza metoda wypisująca listę adresów.
-     *
-     * @param adresy lista adresów
-     */
     private static void wypiszAdresy(List<Address> adresy) {
         if (adresy.isEmpty()) {
             System.out.println("(Brak adresów)");
         } else {
             for (Address a : adresy) {
-                System.out.printf("ID: %-3d Miasto: %-15s Miejscowość: %-15s Kod: %-10s%n",
+                System.out.printf("ID: %-3d Miasto: %-15s Miejscowość: %-15s Kod: %-10s Dom: %-6s Mieszkanie: %-6s%n",
                         a.getId(),
                         a.getMiasto(),
                         a.getMiejscowosc(),
-                        a.getKodPocztowy()
+                        a.getKodPocztowy(),
+                        a.getNumerDomu(),
+                        a.getNumerMieszkania()
                 );
             }
         }

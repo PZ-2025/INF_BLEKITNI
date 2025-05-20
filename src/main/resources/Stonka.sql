@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS Zadania (
     Nazwa  VARCHAR(100),
     Data   DATE,
     Status VARCHAR(50),
-    Opis   TEXT
+    Opis   TEXT,
+    czas_trwania_zmiany TIME NULL COMMENT 'Czas trwania zmiany pracownika przy zadaniu'
 );
 
 -- =============================================================
@@ -70,7 +71,7 @@ CREATE TABLE IF NOT EXISTS Wnioski_o_nieobecnosc (
     Data_rozpoczecia   DATE,
     Data_zakonczenia   DATE,
     Opis               TEXT,
-    Status             VARCHAR(50) DEFAULT 'Oczekuje',
+    Status             ENUM('Oczekuje', 'Nie przyjęty', 'Przyjęty') DEFAULT 'Oczekuje',
     Id_pracownika      INT,
     FOREIGN KEY (Id_pracownika) REFERENCES Pracownicy(Id) ON DELETE CASCADE
 );
@@ -219,16 +220,21 @@ INSERT INTO Zadania (Nazwa, Data, Status, Opis) VALUES
 ('Porządkowanie zaplecza',     '2025-04-08', 'Zakończone','Czyszczenie i sortowanie towarów');
 
 -- Zadania_Pracownicy
-INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania) VALUES
-(1, 1), (2, 2), (3, 3), (4, 4), (5, 5);
+INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania, czas_trwania_zmiany) VALUES
+(1, 1, NULL),
+(2, 2, NULL),
+(3, 3, NULL),
+(4, 4, NULL),
+(5, 5, NULL);
 
 -- Wnioski o nieobecność
-INSERT INTO Wnioski_o_nieobecnosc (Typ_wniosku, Data_rozpoczecia, Data_zakonczenia, Opis, Id_pracownika) VALUES
-('Urlop wypoczynkowy', '2025-05-01', '2025-05-10', 'Wakacje w górach',    1),
-('Zwolnienie lekarskie','2025-04-20','2025-04-25', 'Przeziębienie',       2),
-('Urlop bezpłatny',     '2025-06-01','2025-06-15', 'Wyjazd zagraniczny',  3),
-('Urlop na żądanie',    '2025-04-22','2025-04-22', 'Sprawy rodzinne',     4),
-('Opieka nad dzieckiem','2025-05-05','2025-05-07', 'Chore dziecko',       5);
+INSERT INTO Wnioski_o_nieobecnosc
+(Typ_wniosku, Data_rozpoczecia, Data_zakonczenia, Opis, Id_pracownika, Status) VALUES
+('Urlop wypoczynkowy', '2025-05-01', '2025-05-10', 'Wakacje w górach',    1, 'Oczekuje'),
+('Zwolnienie lekarskie','2025-04-20','2025-04-25', 'Przeziębienie',       2, 'Oczekuje'),
+('Urlop bezpłatny',     '2025-06-01','2025-06-15', 'Wyjazd zagraniczny',  3, 'Oczekuje'),
+('Urlop na żądanie',    '2025-04-22','2025-04-22', 'Sprawy rodzinne',     4, 'Oczekuje'),
+('Opieka nad dzieckiem','2025-05-05','2025-05-07', 'Chore dziecko',       5, 'Oczekuje');
 
 -- Zamówienia
 INSERT INTO Zamowienia (Id_produktu, Id_pracownika, Ilosc, Cena, Data) VALUES

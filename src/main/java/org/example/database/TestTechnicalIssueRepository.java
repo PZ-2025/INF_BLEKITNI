@@ -1,10 +1,3 @@
-/*
- * Classname: TestTechnicalIssueRepository
- * Version information: 1.0
- * Date: 2025-05-15
- * Copyright notice: © BŁĘKITNI
- */
-
 package org.example.database;
 
 import org.example.sys.Employee;
@@ -20,53 +13,73 @@ public class TestTechnicalIssueRepository {
 
     public static void main(String[] args) {
         TechnicalIssueRepository issueRepo = new TechnicalIssueRepository();
-        UserRepository userRepo = new UserRepository();
+        UserRepository           userRepo  = new UserRepository();
 
         try {
-            // Pobierz pracownika do przypisania zgłoszenia
+            // --- 0. Pobranie pracownika do przypisania zgłoszenia ---
             List<Employee> pracownicy = userRepo.pobierzWszystkichPracownikow();
             if (pracownicy.isEmpty()) {
                 System.out.println("Brak pracowników w bazie. Dodaj pracownika przed testem.");
                 return;
             }
-
-            Employee employee = pracownicy.get(0); // wybierz pierwszego
+            Employee employee = pracownicy.get(0);
 
             // === 1. Dodanie nowego zgłoszenia ===
-            TechnicalIssue issue = new TechnicalIssue();
+            LocalDate       ld    = LocalDate.now();
+            TechnicalIssue  issue = new TechnicalIssue();
             issue.setType("Awaria terminala");
             issue.setDescription("Terminal płatniczy nie działa.");
-            issue.setDateSubmitted(LocalDate.now());
+            issue.setDateSubmitted(ld);      // LocalDate
             issue.setStatus("Nowe");
             issue.setEmployee(employee);
 
             issueRepo.dodajZgloszenie(issue);
-            System.out.println(">>> Dodano zgłoszenie!");
+            System.out.println(">>> Dodano zgłoszenie o ID " + issue.getId());
 
             // === 2. Wyświetlenie wszystkich zgłoszeń ===
-            System.out.println("\n>>> Lista zgłoszeń:");
+            System.out.println("\n>>> Wszystkie zgłoszenia:");
             wypiszZgloszenia(issueRepo.pobierzWszystkieZgloszenia());
 
             // === 3. Odczyt zgłoszenia po ID ===
             TechnicalIssue znalezione = issueRepo.znajdzZgloszeniePoId(issue.getId());
-            System.out.println("\n>>> Zgłoszenie po ID: " + znalezione);
+            System.out.println(">>> Znalezione po ID: " + znalezione);
 
             // === 4. Aktualizacja zgłoszenia ===
             issue.setStatus("W trakcie");
             issue.setDescription("Zgłoszenie przekazane do serwisu.");
             issueRepo.aktualizujZgloszenie(issue);
-            System.out.println(">>> Zaktualizowano zgłoszenie.");
+            System.out.println("\n>>> Zaktualizowano zgłoszenie.");
 
             // === 5. Wyświetlenie po aktualizacji ===
-            System.out.println("\n>>> Lista po aktualizacji:");
+            System.out.println("\n>>> Po aktualizacji:");
             wypiszZgloszenia(issueRepo.pobierzWszystkieZgloszenia());
 
-            // === 6. Usunięcie zgłoszenia ===
-            issueRepo.usunZgloszenie(issue);
-            System.out.println(">>> Usunięto zgłoszenie.");
+            // === 6. Testy metod wyszukiwania po kryteriach ===
 
-            // === 7. Lista po usunięciu ===
-            System.out.println("\n>>> Lista po usunięciu:");
+            // 6a) po fragmencie typu
+            System.out.println("\n>>> Znajdź po typie zawierającym 'Awaria':");
+            wypiszZgloszenia(issueRepo.znajdzPoTypie("Awaria"));
+
+            // 6b) po przedziale dat [ld−1, ld+1]
+            LocalDate start = ld.minusDays(1);
+            LocalDate end   = ld.plusDays(1);
+            System.out.println("\n>>> Znajdź po dacie zgłoszenia [" + start + " – " + end + "]:");
+            wypiszZgloszenia(issueRepo.znajdzPoDacie(start, end));
+
+            // 6c) po exact statusie
+            System.out.println("\n>>> Znajdź po statusie 'W trakcie':");
+            wypiszZgloszenia(issueRepo.znajdzPoStatusie("W trakcie"));
+
+            // 6d) po pracowniku
+            System.out.println("\n>>> Znajdź zgłoszenia pracownika o ID " + employee.getId() + ":");
+            wypiszZgloszenia(issueRepo.znajdzPoPracowniku(employee.getId()));
+
+            // === 7. Usunięcie zgłoszenia ===
+            issueRepo.usunZgloszenie(issue);
+            System.out.println("\n>>> Usunięto zgłoszenie.");
+
+            // === 8. Lista po usunięciu ===
+            System.out.println("\n>>> Po usunięciu (powinno być pusto):");
             wypiszZgloszenia(issueRepo.pobierzWszystkieZgloszenia());
 
         } catch (Exception e) {
@@ -77,17 +90,13 @@ public class TestTechnicalIssueRepository {
         }
     }
 
-    /**
-     * Pomocnicza metoda wypisująca zgłoszenia.
-     *
-     * @param zgloszenia lista zgłoszeń
-     */
     private static void wypiszZgloszenia(List<TechnicalIssue> zgloszenia) {
         if (zgloszenia.isEmpty()) {
             System.out.println("(Brak zgłoszeń)");
         } else {
             for (TechnicalIssue z : zgloszenia) {
-                System.out.printf("ID: %-3d Typ: %-20s Status: %-15s Data: %-10s\n",
+                System.out.printf(
+                        "ID: %-3d | Typ: %-20s | Status: %-12s | Data: %s%n",
                         z.getId(),
                         z.getType(),
                         z.getStatus(),

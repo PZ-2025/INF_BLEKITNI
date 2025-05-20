@@ -13,7 +13,7 @@ public class AbsenceRequest {
     @Column(name = "Id")
     private int id;
 
-    @Column(name = "Typ_wniosku", nullable = false)
+    @Column(name = "Typ_wniosku", length = 100, nullable = false)
     private String typWniosku;
 
     @Column(name = "Data_rozpoczecia", nullable = false)
@@ -24,22 +24,49 @@ public class AbsenceRequest {
     @Temporal(TemporalType.DATE)
     private Date dataZakonczenia;
 
-    @Column(name = "Opis")
+    @Column(name = "Opis", columnDefinition = "TEXT")
     private String opis;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "Status", nullable = false)
+    private StatusWniosku status = StatusWniosku.OCZEKUJE; // domyślna wartość
 
     @ManyToOne
     @JoinColumn(name = "Id_pracownika", nullable = false)
     private Employee pracownik;
 
-    // === Konstruktory ===
+    // Enum odpowiadający możliwym statusom w tabeli SQL
+    public enum StatusWniosku {
+        OCZEKUJE("Oczekuje"),
+        NIEPRZYJETY("Nie przyjęty"),
+        PRZYJETY("Przyjęty");
+
+        private final String value;
+
+        StatusWniosku(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
+    }
+
     public AbsenceRequest() {}
 
-    public AbsenceRequest(String typWniosku, Date dataRozpoczecia, Date dataZakonczenia, String opis, Employee pracownik) {
+    public AbsenceRequest(String typWniosku, Date dataRozpoczecia, Date dataZakonczenia,
+                          String opis, Employee pracownik, StatusWniosku status) {
         this.typWniosku = typWniosku;
         this.dataRozpoczecia = dataRozpoczecia;
         this.dataZakonczenia = dataZakonczenia;
         this.opis = opis;
         this.pracownik = pracownik;
+        this.status = status;
     }
 
     // === Gettery i settery ===
@@ -87,11 +114,19 @@ public class AbsenceRequest {
         this.pracownik = pracownik;
     }
 
+    public StatusWniosku getStatus() {
+        return status;
+    }
+
+    public void setStatus(StatusWniosku status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return String.format(
-                "AbsenceRequest{id=%d, typ='%s', od=%s, do=%s, opis='%s', pracownik=%s %s}",
-                id, typWniosku, dataRozpoczecia, dataZakonczenia, opis,
+                "AbsenceRequest{id=%d, typ='%s', od=%s, do=%s, opis='%s', status='%s', pracownik=%s %s}",
+                id, typWniosku, dataRozpoczecia, dataZakonczenia, opis, status,
                 pracownik != null ? pracownik.getName() : "null",
                 pracownik != null ? pracownik.getSurname() : ""
         );

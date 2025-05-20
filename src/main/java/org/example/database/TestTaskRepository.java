@@ -1,15 +1,9 @@
-/*
- * Classname: TestTaskRepository
- * Version information: 1.0
- * Date: 2025-04-27
- * Copyright notice: © BŁĘKITNI
- */
-
 package org.example.database;
 
 import org.example.sys.Task;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalTime;
 import java.util.Date;
 import java.util.List;
 
@@ -20,59 +14,57 @@ public class TestTaskRepository {
 
     public static void main(String[] args) {
         TaskRepository taskRepo = new TaskRepository();
-
         try {
-            // === 1. Dodawanie nowych zadań ===
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
-            Task zadanie1 = new Task(
-                    "Przyjęcie dostawy",
-                    sdf.parse("2025-05-01"),
-                    "Nowe",
-                    "Przyjąć dostawę mleka."
-            );
+            // === 1. Dodawanie nowych zadań, niektóre z czasem zmiany ===
+            Task zad1 = new Task("Przyjęcie dostawy", sdf.parse("2025-05-01"), "Nowe",
+                    "Przyjąć dostawę mleka.", LocalTime.of(2, 30));
+            Task zad2 = new Task("Sprawdzenie stanów", sdf.parse("2025-05-03"), "Nowe",
+                    "Sprawdzić ilość jogurtów.", LocalTime.of(1, 0));
+            Task zad3 = new Task("Aktualizacja cen", sdf.parse("2025-05-05"), "W trakcie",
+                    "Aktualizacja cen nabiału.", null);
 
-            Task zadanie2 = new Task(
-                    "Sprawdzenie stanów",
-                    sdf.parse("2025-05-03"),
-                    "Nowe",
-                    "Sprawdzić ilość jogurtów."
-            );
-
-            Task zadanie3 = new Task(
-                    "Aktualizacja cen",
-                    sdf.parse("2025-05-05"),
-                    "W trakcie",
-                    "Aktualizacja cen nabiału."
-            );
-
-            taskRepo.dodajZadanie(zadanie1);
-            taskRepo.dodajZadanie(zadanie2);
-            taskRepo.dodajZadanie(zadanie3);
-
+            taskRepo.dodajZadanie(zad1);
+            taskRepo.dodajZadanie(zad2);
+            taskRepo.dodajZadanie(zad3);
             System.out.println(">>> Dodano zadania!");
 
-            // === 2. Pobieranie wszystkich zadań ===
-            System.out.println("\n>>> Lista wszystkich zadań:");
-            wypiszZadania(taskRepo.pobierzWszystkieZadania());
+            // === 2. Lista wszystkich zadań ===
+            System.out.println("\n>>> Wszystkie zadania:");
+            wypisz(taskRepo.pobierzWszystkieZadania());
 
-            // === 3. Aktualizacja istniejącego zadania ===
-            zadanie1.setStatus("W trakcie");
-            zadanie1.setOpis("Dostawa mleka zrealizowana w połowie.");
-            taskRepo.aktualizujZadanie(zadanie1);
-            System.out.println("\n>>> Zaktualizowano zadanie 1.");
+            // === 3. Wyszukiwanie po nazwie ===
+            System.out.println("\n>>> Zadania zawierające 'Sprawdzenie':");
+            wypisz(taskRepo.znajdzPoNazwie("Sprawdzenie"));
 
-            // === 4. Pobieranie zadania po ID ===
-            Task znalezione = taskRepo.znajdzZadaniePoId(zadanie1.getId());
-            System.out.println(">>> Zadanie po ID: " + znalezione);
+            // === 4. Wyszukiwanie po dacie ===
+            Date data = sdf.parse("2025-05-03");
+            System.out.println("\n>>> Zadania na dzień 2025-05-03:");
+            wypisz(taskRepo.znajdzPoDacie(data));
 
-            // === 5. Usuwanie zadania ===
-            taskRepo.usunZadanie(zadanie2);
-            System.out.println("\n>>> Usunięto zadanie 2.");
+            // === 5. Wyszukiwanie po statusie ===
+            System.out.println("\n>>> Zadania o statusie 'Nowe':");
+            wypisz(taskRepo.znajdzPoStatusie("Nowe"));
 
-            // === 6. Lista zadań po usunięciu ===
-            System.out.println("\n>>> Lista zadań po usunięciu:");
-            wypiszZadania(taskRepo.pobierzWszystkieZadania());
+            // === 6. Wyszukiwanie po opisie ===
+            System.out.println("\n>>> Zadania z opisem 'mleka':");
+            wypisz(taskRepo.znajdzPoOpisie("mleka"));
+
+            // === 7. Wyszukiwanie po czasie zmiany (>=1h do <=3h) ===
+            System.out.println("\n>>> Zadania z czasem zmiany między 01:00 a 03:00:");
+            wypisz(taskRepo.znajdzPoCzasieTrwaniaZmiany(LocalTime.of(1,0), LocalTime.of(3,0)));
+
+            // === 8. Aktualizacja zadania ===
+            zad1.setStatus("Zakończone");
+            taskRepo.aktualizujZadanie(zad1);
+            System.out.println("\n>>> Po aktualizacji statusu zadania 1:");
+            System.out.println(taskRepo.znajdzZadaniePoId(zad1.getId()));
+
+            // === 9. Usuwanie zadania ===
+            taskRepo.usunZadanie(zad2);
+            System.out.println("\n>>> Po usunięciu zadania 2, pozostałe:");
+            wypisz(taskRepo.pobierzWszystkieZadania());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,17 +73,12 @@ public class TestTaskRepository {
         }
     }
 
-    /**
-     * Pomocnicza metoda wypisująca zadania.
-     *
-     * @param zadania lista zadań do wypisania
-     */
-    private static void wypiszZadania(List<Task> zadania) {
-        if (zadania.isEmpty()) {
+    private static void wypisz(List<Task> lista) {
+        if (lista.isEmpty()) {
             System.out.println("(Brak zadań)");
         } else {
-            for (Task z : zadania) {
-                System.out.println(z);
+            for (Task t : lista) {
+                System.out.println(t);
             }
         }
         System.out.println("-----------------------------");

@@ -40,6 +40,147 @@ public class CashierPanelController {
         cashierPanel.setCenterPane(layout);
     }
 
+    public void showSalesReportsPanel() {
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER);
+
+        Label label = new Label("Raporty sprzedaży");
+        label.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        // Przycisk przykładowy do generowania raportu
+        Button generateButton = cashierPanel.createStyledButton("Generuj raport sprzedaży");
+        generateButton.setOnAction(e -> showNotification("Raport", "Raport sprzedaży został wygenerowany."));
+
+        layout.getChildren().addAll(label, generateButton);
+        cashierPanel.setCenterPane(layout);
+    }
+
+    public void showCloseShiftPanel() {
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER);
+
+        Label label = new Label("Zamknięcie zmiany");
+        label.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        Button confirmButton = cashierPanel.createStyledButton("Zamknij zmianę", "#E67E22");
+        confirmButton.setOnAction(e -> {
+            showNotification("Zmiana zamknięta", "Zmiana została pomyślnie zamknięta.");
+            cashierPanel.setReportGenerated(true); // flaga do zamykania aplikacji
+        });
+
+        layout.getChildren().addAll(label, confirmButton);
+        cashierPanel.setCenterPane(layout);
+    }
+
+    public void showIssueReportPanel() {
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER_LEFT);
+
+        Label label = new Label("Zgłoś problem techniczny:");
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("Awaria sprzętu", "Błąd oprogramowania", "Inne");
+        typeBox.setPromptText("Wybierz typ problemu");
+
+        TextArea description = new TextArea();
+        description.setPromptText("Opisz problem...");
+        description.setWrapText(true);
+        description.setPrefHeight(100);
+
+        Button sendButton = cashierPanel.createStyledButton("Wyślij zgłoszenie", "#27AE60");
+        sendButton.setOnAction(e -> {
+            if (typeBox.getValue() == null || description.getText().trim().isEmpty()) {
+                showNotification("Błąd", "Uzupełnij wszystkie pola.");
+                return;
+            }
+
+            UserRepository userRepo = new UserRepository();
+            TechnicalIssueRepository issueRepo = new TechnicalIssueRepository();
+            try {
+                Employee emp = userRepo.getCurrentEmployee();
+                if (emp == null) {
+                    showNotification("Błąd", "Brak zalogowanego pracownika.");
+                    return;
+                }
+
+                TechnicalIssue issue = new TechnicalIssue(
+                        typeBox.getValue(),
+                        description.getText(),
+                        LocalDate.now(),
+                        emp,
+                        "Nowe"
+                );
+                issueRepo.dodajZgloszenie(issue);
+                showNotification("Sukces", "Zgłoszenie wysłane.");
+            } finally {
+                userRepo.close();
+                issueRepo.close();
+            }
+        });
+
+        layout.getChildren().addAll(label, typeBox, description, sendButton);
+        cashierPanel.setCenterPane(layout);
+    }
+
+    public void showAbsenceRequestForm() {
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER_LEFT);
+
+        Label label = new Label("Wniosek o nieobecność:");
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("Urlop wypoczynkowy", "Urlop na żądanie", "Zwolnienie lekarskie", "Inne");
+        typeBox.setPromptText("Typ wniosku");
+
+        DatePicker startPicker = new DatePicker();
+        DatePicker endPicker = new DatePicker();
+        TextArea reason = new TextArea();
+        reason.setPromptText("Podaj powód...");
+        reason.setWrapText(true);
+        reason.setPrefHeight(80);
+
+        Button submit = cashierPanel.createStyledButton("Wyślij wniosek", "#27AE60");
+        submit.setOnAction(e -> {
+            if (typeBox.getValue() == null || startPicker.getValue() == null || endPicker.getValue() == null || reason.getText().trim().isEmpty()) {
+                showNotification("Błąd", "Uzupełnij wszystkie pola.");
+                return;
+            }
+            if (startPicker.getValue().isAfter(endPicker.getValue())) {
+                showNotification("Błąd", "Data rozpoczęcia nie może być późniejsza niż zakończenia.");
+                return;
+            }
+
+            AbsenceRequestRepository repo = new AbsenceRequestRepository();
+            UserRepository userRepo = new UserRepository();
+            try {
+                Employee emp = userRepo.getCurrentEmployee();
+                if (emp == null) {
+                    showNotification("Błąd", "Brak zalogowanego pracownika.");
+                    return;
+                }
+
+                AbsenceRequest request = new AbsenceRequest(
+                        typeBox.getValue(),
+                        java.sql.Date.valueOf(startPicker.getValue()),
+                        java.sql.Date.valueOf(endPicker.getValue()),
+                        reason.getText(),
+                        emp,
+                        AbsenceRequest.StatusWniosku.OCZEKUJE // Teraz używamy enuma zamiast String
+                );
+                repo.dodajWniosek(request);
+                showNotification("Sukces", "Wniosek został zapisany.");
+            } finally {
+                repo.close();
+                userRepo.close();
+            }
+        });
+
+        layout.getChildren().addAll(label, typeBox, startPicker, endPicker, reason, submit);
+        cashierPanel.setCenterPane(layout);
+    }
+
     private void startNewTransaction() {
         Stage dialog = createStyledDialog("Nowa transakcja");
         dialog.setMinWidth(800);
@@ -307,6 +448,13 @@ public class CashierPanelController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    public void logout() {
+        UserRepository.resetCurrentEmployee();
+        Stage stage = cashierPanel.getPrimaryStage();
+        stage.close();
+        HelloApplication.showLoginScreen(stage); // zakładamy istnienie tej metody
     }
 
     public static class TransactionItem {

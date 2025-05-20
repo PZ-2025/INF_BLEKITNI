@@ -11,59 +11,76 @@ import java.util.List;
 public class TestWarehouseRepository {
 
     public static void main(String[] args) {
-        WarehouseRepository repo = new WarehouseRepository();
+        WarehouseRepository warehouseRepo = new WarehouseRepository();
+        ProductRepository   productRepo   = new ProductRepository();
 
         try {
-            // === 1. Dodanie nowego stanu magazynowego ===
+            // === 1. Dodanie produktu (potrzebne dla klucza obcego) ===
             Product produkt = new Product("Jogurt truskawkowy", "Nabiał", 3.49);
+            productRepo.dodajProdukt(produkt);
+            System.out.println(">>> Dodano produkt: " + produkt.getName());
+
+            // === 2. Dodanie stanu magazynowego ===
             Warehouse stan = new Warehouse(produkt, 120);
-            repo.dodajStanMagazynowy(stan);
+            warehouseRepo.dodajStanMagazynowy(stan);
             System.out.println(">>> Dodano stan magazynowy!");
 
-            // === 2. Lista wszystkich stanów ===
-            System.out.println("\n>>> Lista stanów magazynowych:");
-            wypiszStany(repo.pobierzWszystkieStany());
+            // === 3. Wyświetlenie wszystkich stanów ===
+            System.out.println("\n>>> Lista wszystkich stanów:");
+            wypiszStany(warehouseRepo.pobierzWszystkieStany());
 
-            // === 3. Aktualizacja ===
-            produkt.setPrice(3.99); // aktualizacja ceny produktu
-            stan.setIlosc(100);     // aktualizacja ilości w magazynie
-            repo.aktualizujStan(stan);
-            System.out.println(">>> Zaktualizowano stan magazynowy.");
+            // === 4. Aktualizacja stanu (zmieniamy ilość na 100) ===
+            stan.setIlosc(100);
+            warehouseRepo.aktualizujStan(stan);
+            System.out.println(">>> Zaktualizowano stan magazynowy (ilość → 100).");
 
-            // === 4. Pobranie po ID ===
-            Warehouse znaleziony = repo.znajdzStanPoIdProduktu(produkt.getId());
+            // === 5. Odczyt po ID produktu ===
+            Warehouse znaleziony = warehouseRepo.znajdzStanPoIdProduktu(produkt.getId());
             System.out.println(">>> Stan po ID produktu: " + znaleziony);
 
-            // === 5. Usunięcie ===
-            repo.usunStan(produkt.getId());
+            // === 6. Wyszukiwania po różnych kryteriach ===
+            System.out.println("\n>>> Znajdź rekordy z ilością = 100:");
+            wypiszStany(warehouseRepo.znajdzPoIlosci(100));
+
+            System.out.println("\n>>> Znajdź rekordy z ilością < 110:");
+            wypiszStany(warehouseRepo.znajdzPoIlosciMniejszejNiz(110));
+
+            System.out.println("\n>>> Znajdź rekordy z ilością > 50:");
+            wypiszStany(warehouseRepo.znajdzPoIlosciWiekszejNiz(50));
+
+            System.out.println("\n>>> Znajdź rekordy z ilością między 80 a 120:");
+            wypiszStany(warehouseRepo.znajdzPoIlosciWMiedzy(80, 120));
+
+            // === 7. Usunięcie stanu ===
+            warehouseRepo.usunStan(produkt.getId());
             System.out.println(">>> Usunięto stan magazynowy.");
 
-            // === 6. Lista po usunięciu ===
-            System.out.println("\n>>> Lista po usunięciu:");
-            wypiszStany(repo.pobierzWszystkieStany());
+            // === 8. Lista po usunięciu ===
+            System.out.println("\n>>> Lista stanów po usunięciu:");
+            wypiszStany(warehouseRepo.pobierzWszystkieStany());
 
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            repo.close();
+            warehouseRepo.close();
+            productRepo.close();
         }
     }
 
     /**
-     * Pomocnicza metoda wypisująca stany magazynowe.
-     *
-     * @param stany lista stanów magazynowych
+     * Pomocnicza metoda wypisująca listę stanów magazynowych.
      */
     private static void wypiszStany(List<Warehouse> stany) {
         if (stany.isEmpty()) {
             System.out.println("(Brak danych o stanach magazynowych)");
         } else {
-            for (Warehouse p : stany) {
-                System.out.printf("ID: %-3d Nazwa: %-20s Cena: %-6.2f Ilość: %-4d%n",
-                        p.getProdukt().getId(),
-                        p.getProdukt().getName(),
-                        p.getProdukt().getPrice(),
-                        p.getIlosc()
+            for (Warehouse w : stany) {
+                System.out.printf(
+                        "ID produktu: %-3d | Nazwa: %-20s | Cena: %6.2f | Ilość: %-4d%n",
+                        w.getProdukt().getId(),
+                        w.getProdukt().getName(),
+                        w.getProdukt().getPrice(),
+                        w.getIlosc()
                 );
             }
         }

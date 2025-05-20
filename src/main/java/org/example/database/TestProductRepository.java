@@ -4,7 +4,6 @@
  * Date: 2025-05-12
  * Copyright notice: © BŁĘKITNI
  */
-
 package org.example.database;
 
 import org.example.sys.Product;
@@ -17,73 +16,88 @@ import java.util.List;
 public class TestProductRepository {
 
     public static void main(String[] args) {
-        ProductRepository productRepo = new ProductRepository();
+        ProductRepository repo = new ProductRepository();
 
         try {
-            // === 1. Dodanie produktu ===
-            Product produkt1 = new Product("Masło", "Nabiał", 6.99);
-            productRepo.dodajProdukt(produkt1);
-            System.out.println(">>> Dodano produkt: Masło");
+            // 1. Dodanie produktów
+            Product p1 = new Product("Masło",    "Nabiał",      6.99);
+            Product p2 = new Product("Szampon",  "Kosmetyki",  12.49);
+            Product p3 = new Product("Mleko",    "Nabiał",      4.50);
+            repo.dodajProdukt(p1);
+            repo.dodajProdukt(p2);
+            repo.dodajProdukt(p3);
+            System.out.println(">>> Dodano 3 produkty.");
 
-            Product produkt2 = new Product("Szampon", "Kosmetyki", 12.49);
-            productRepo.dodajProdukt(produkt2);
-            System.out.println(">>> Dodano produkt: Szampon");
-
-            // === 2. Pobranie wszystkich produktów ===
+            // 2. Wyświetlenie wszystkich
             System.out.println("\n>>> Wszystkie produkty:");
-            wypiszProdukty(productRepo.pobierzWszystkieProdukty());
+            wypiszProdukty(repo.pobierzWszystkieProdukty());
 
-            // === 3. Pobranie produktu po ID ===
-            Product znaleziony = productRepo.znajdzProduktPoId(produkt1.getId());
-            System.out.println(">>> Znaleziony po ID: " + znaleziony);
+            // 3. Odczyt po ID
+            Product found = repo.znajdzProduktPoId(p1.getId());
+            System.out.println("\n>>> Znaleziono po ID: " + found);
 
-            // === 4. Pobranie po kategorii ===
-            System.out.println("\n>>> Produkty w kategorii 'Nabiał':");
-            wypiszProdukty(productRepo.pobierzProduktyPoKategorii("Nabiał"));
+            // 4. Filtrowanie po kategorii (dokładne)
+            System.out.println("\n>>> Kategoria 'Nabiał':");
+            wypiszProdukty(repo.pobierzProduktyPoKategorii("Nabiał"));
 
-            // === 5. Aktualizacja obiektu produkt ===
-            znaleziony.setCategory("Produkty spożywcze");
-            productRepo.aktualizujProdukt(znaleziony);
-            System.out.println(">>> Zmieniono kategorię produktu.");
+            // 5. Aktualizacja obiektu
+            found.setCategory("Produkty spożywcze");
+            repo.aktualizujProdukt(found);
+            System.out.println(">>> Zmieniono kategorię Masło na 'Produkty spożywcze'.");
 
-            // === 6. Aktualizacja ceny ===
-            productRepo.aktualizujCeneProduktu(produkt2.getId(), 10.99);
-            System.out.println(">>> Zmieniono cenę produktu Szampon.");
+            // 6. Zmiana ceny
+            repo.aktualizujCeneProduktu(p2.getId(), 10.99);
+            System.out.println(">>> Zmieniono cenę Szampon na 10.99.");
 
-            // === 7. Produkty w zakresie cenowym ===
-            System.out.println("\n>>> Produkty w zakresie cenowym 5.00 - 11.00:");
-            wypiszProdukty(productRepo.pobierzProduktyWZakresieCenowym(5.00, 11.00));
+            // 7. Zakres cenowy 5.00–11.00
+            System.out.println("\n>>> Zakres cen 5.00–11.00:");
+            wypiszProdukty(repo.pobierzProduktyWZakresieCenowym(5.00, 11.00));
 
-            // === 8. Usunięcie produktów po kategorii ===
-            int usuniete = productRepo.usunProduktyZKategorii("Produkty spożywcze");
-            System.out.println(">>> Usunięto produktów z kategorii 'Produkty spożywcze': " + usuniete);
+            // 8. Usunięcie po kategorii
+            int delCount = repo.usunProduktyZKategorii("Produkty spożywcze");
+            System.out.println(">>> Usunięto z kategorii 'Produkty spożywcze': " + delCount);
 
-            // === 9. Usunięcie konkretnego produktu ===
-            productRepo.usunProdukt(produkt2.getId());
-            System.out.println(">>> Usunięto produkt: Szampon");
+            // 9. Usunięcie pojedyncze
+            repo.usunProdukt(p2.getId());
+            System.out.println(">>> Usunięto produkt Szampon.");
 
-            // === 10. Lista końcowa ===
-            System.out.println("\n>>> Lista produktów po usunięciach:");
-            wypiszProdukty(productRepo.pobierzWszystkieProdukty());
+            // 10. Lista po usunięciach
+            System.out.println("\n>>> Po usunięciach:");
+            wypiszProdukty(repo.pobierzWszystkieProdukty());
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            // === Dodatkowe wyszukiwania ===
+
+            // 11. Po fragmencie nazwy ("M")
+            System.out.println("\n>>> Nazwa zawiera 'M':");
+            wypiszProdukty(repo.znajdzPoNazwie("M"));
+
+            // 12. Dokładna cena 4.50
+            System.out.println("\n>>> Cena dokładnie 4.50:");
+            wypiszProdukty(repo.znajdzPoCenieDokladnej(4.50));
+
+            // 13. Cena >= 6.00
+            System.out.println("\n>>> Cena >= 6.00:");
+            wypiszProdukty(repo.znajdzPoCenieMin(6.00));
+
+            // 14. Cena <= 11.00
+            System.out.println("\n>>> Cena <= 11.00:");
+            wypiszProdukty(repo.znajdzPoCenieMax(11.00));
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         } finally {
-            productRepo.close();
+            repo.close();
         }
     }
 
-    /**
-     * Pomocnicza metoda wypisująca produkty.
-     *
-     * @param produkty lista produktów
-     */
-    private static void wypiszProdukty(List<Product> produkty) {
-        if (produkty.isEmpty()) {
+    /** Pomocnicze wypisywanie. */
+    private static void wypiszProdukty(List<Product> list) {
+        if (list.isEmpty()) {
             System.out.println("(Brak produktów)");
         } else {
-            for (Product p : produkty) {
-                System.out.printf("ID: %-3d | Nazwa: %-20s | Kategoria: %-15s | Cena: %.2f zł%n",
+            for (Product p : list) {
+                System.out.printf(
+                        "ID: %-3d | Nazwa: %-20s | Kategoria: %-15s | Cena: %.2f zł%n",
                         p.getId(),
                         p.getName(),
                         p.getCategory(),

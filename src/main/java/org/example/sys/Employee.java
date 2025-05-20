@@ -9,9 +9,17 @@ import org.example.wyjatki.AgeException;
 import java.math.BigDecimal;
 import java.util.Date;
 
-/**
- * Klasa reprezentująca pracownika w systemie.
- */
+@SqlResultSetMapping(
+        name = "EmployeeWorkloadMapping",
+        classes = @ConstructorResult(
+                targetClass = pdf.WorkloadReportGenerator.EmployeeWorkload.class,
+                columns = {
+                        @ColumnResult(name = "employeeName", type = String.class),
+                        @ColumnResult(name = "department", type = String.class),
+                        @ColumnResult(name = "totalHours", type = Double.class)
+                }
+        )
+)
 @Entity
 @Table(name = "Pracownicy")
 @Access(AccessType.FIELD)
@@ -45,7 +53,6 @@ public class Employee extends Person {
     @Temporal(TemporalType.DATE)
     private Date sickLeaveStartDate;
 
-    // Dodane pole do usuwania miękkiego
     @Column(name = "usuniety", nullable = false)
     private boolean usuniety = false;
 
@@ -77,7 +84,6 @@ public class Employee extends Person {
         this.sickLeaveStartDate = null;
     }
 
-    // Getter i setter dla pola 'usuniety'
     public boolean isUsuniety() {
         return usuniety;
     }
