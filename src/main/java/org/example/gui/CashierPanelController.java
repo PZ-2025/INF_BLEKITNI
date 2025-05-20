@@ -1,6 +1,8 @@
 package org.example.gui;
 
 import javafx.animation.*;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -8,11 +10,16 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.stage.*;
-import javafx.util.Callback;
 import javafx.util.Duration;
+import javafx.util.converter.IntegerStringConverter;
+import org.example.database.*;
+import org.example.sys.*;
+
 import java.time.LocalDate;
+import java.util.Date;
 
 public class CashierPanelController {
 
@@ -22,202 +29,31 @@ public class CashierPanelController {
         this.cashierPanel = cashierPanel;
     }
 
-    // Ekran sprzedaży
     public void showSalesScreen() {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
         layout.setAlignment(Pos.CENTER);
 
-        Button addToCartButton = cashierPanel.createStyledButton("Dodaj do koszyka");
-        Button finalizeSaleButton = cashierPanel.createStyledButton("Finalizuj sprzedaż");
-
-        addToCartButton.setOnAction(e -> showProductSelectionDialog());
-        finalizeSaleButton.setOnAction(e -> finalizeSale());
-
-        layout.getChildren().addAll(addToCartButton, finalizeSaleButton);
+        Button newTransactionButton = cashierPanel.createStyledButton("Rozpocznij nową transakcję");
+        newTransactionButton.setOnAction(e -> startNewTransaction());
+        layout.getChildren().add(newTransactionButton);
         cashierPanel.setCenterPane(layout);
     }
 
-    private void showProductSelectionDialog() {
-        Stage dialog = createStyledDialog("Wybór produktów");
-
-        VBox root = new VBox(20);
-        root.setPadding(new Insets(20));
-
-        TextField searchField = createStyledTextField("Szukaj produktów...");
-        TableView<Product> table = createProductTable();
-
-        HBox buttons = new HBox(10);
-        Button addButton = cashierPanel.createStyledButton("Dodaj do koszyka");
-        Button cancelButton = cashierPanel.createStyledButton("Anuluj", "#E74C3C");
-
-        addButton.setOnAction(e -> {
-            Product selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                showNotification("Dodano do koszyka", selected.getName());
-                dialog.close();
-            }
-        });
-        cancelButton.setOnAction(e -> dialog.close());
-
-        buttons.getChildren().addAll(addButton, cancelButton);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
-
-        root.getChildren().addAll(searchField, table, buttons);
-        setupDialog(dialog, root);
-    }
-
-    private TableView<Product> createProductTable() {
-        TableView<Product> table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        TableColumn<Product, String> nameCol = new TableColumn<>("Nazwa");
-        nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-
-        TableColumn<Product, Double> priceCol = new TableColumn<>("Cena");
-        priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
-
-        table.getColumns().addAll(nameCol, priceCol);
-        table.setItems(getSampleProducts());
-        return table;
-    }
-
-    // Panel raportów
     public void showSalesReportsPanel() {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
         layout.setAlignment(Pos.CENTER);
 
-        TableView<SalesReport> tableView = createReportTable();
-        HBox buttons = new HBox(10);
+        Label label = new Label("Raporty sprzedaży");
+        label.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        Button pdfButton = cashierPanel.createStyledButton("Generuj PDF");
-        Button csvButton = cashierPanel.createStyledButton("Generuj CSV");
+        // Przycisk przykładowy do generowania raportu
+        Button generateButton = cashierPanel.createStyledButton("Generuj raport sprzedaży");
+        generateButton.setOnAction(e -> showNotification("Raport", "Raport sprzedaży został wygenerowany."));
 
-        pdfButton.setOnAction(e -> showReportDialog("PDF"));
-        csvButton.setOnAction(e -> showReportDialog("CSV"));
-
-        buttons.getChildren().addAll(pdfButton, csvButton);
-        buttons.setAlignment(Pos.CENTER);
-
-        layout.getChildren().addAll(tableView, buttons);
+        layout.getChildren().addAll(label, generateButton);
         cashierPanel.setCenterPane(layout);
-    }
-
-    private void showReportDialog(String format) {
-        Stage dialog = createStyledDialog("Generowanie raportu");
-
-        ComboBox<String> typeBox = createStyledComboBox("Dzienny", "Tygodniowy", "Miesięczny");
-        DatePicker datePicker = createStyledDatePicker();
-
-        Button generateBtn = cashierPanel.createStyledButton("Generuj " + format, "#2980B9");
-        generateBtn.setOnAction(e -> {
-            showNotification("Sukces", "Raport " + format + " wygenerowany");
-            dialog.close();
-        });
-
-        VBox root = new VBox(20);
-        root.getChildren().addAll(
-                new Label("Typ raportu:"), typeBox,
-                new Label("Data:"), datePicker,
-                generateBtn
-        );
-        setupDialog(dialog, root);
-    }
-
-    // Zgłoszenie problemu
-    public void showIssueReportPanel() {
-        Stage dialog = createStyledDialog("Zgłoszenie problemu");
-
-        ComboBox<String> typeBox = createStyledComboBox("Awaria sprzętu", "Błąd oprogramowania", "Inne");
-        TextArea description = createStyledTextArea("Opisz problem...");
-
-        Button sendButton = cashierPanel.createStyledButton("Wyślij", "#27AE60");
-        Button cancelButton = cashierPanel.createStyledButton("Anuluj", "#E74C3C");
-
-        sendButton.setOnAction(e -> {
-            if (validateReport(typeBox.getValue(), description.getText())) {
-                showNotification("Sukces", "Zgłoszenie wysłane");
-                dialog.close();
-            }
-        });
-
-        cancelButton.setOnAction(e -> dialog.close());
-
-        HBox buttons = new HBox(10, sendButton, cancelButton);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
-
-        VBox root = new VBox(20);
-        root.setPadding(new Insets(20));
-        root.getChildren().addAll(
-                new Label("Typ zgłoszenia:"), typeBox,
-                new Label("Opis:"), description,
-                buttons
-        );
-
-        setupDialog(dialog, root);
-    }
-
-
-    private ObservableList<SalesReport> getSampleReports() {
-        return FXCollections.observableArrayList(
-                new SalesReport("1", "2024-04-01", "Dzienny"),
-                new SalesReport("2", "2024-04-02", "Tygodniowy"),
-                new SalesReport("3", "2024-04-03", "Miesięczny")
-        );
-    }
-
-    // 2. Cell factory for the "Podgląd" button column
-    private Callback<TableColumn<SalesReport, Void>, TableCell<SalesReport, Void>> getViewButtonCellFactory() {
-        return new Callback<>() {
-            @Override
-            public TableCell<SalesReport, Void> call(TableColumn<SalesReport, Void> param) {
-                return new TableCell<>() {
-                    private final Button viewButton = new Button("Podgląd");
-
-                    {
-                        viewButton.setOnAction(event -> {
-                            SalesReport report = getTableView().getItems().get(getIndex());
-                            showReportDetails(report);
-                        });
-                        viewButton.setStyle("-fx-background-color: #2980B9; -fx-text-fill: white;");
-                    }
-
-                    @Override
-                    protected void updateItem(Void item, boolean empty) {
-                        super.updateItem(item, empty);
-                        setGraphic(empty ? null : viewButton);
-                    }
-                };
-            }
-        };
-    }
-
-    // 3. Method to show report details (helper method)
-    private void showReportDetails(SalesReport report) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Szczegóły raportu");
-        alert.setHeaderText("Raport ID: " + report.getId());
-        alert.setContentText(
-                "Data utworzenia: " + report.getDate() + "\n" +
-                        "Typ raportu: " + report.getType()
-        );
-        alert.showAndWait();
-    }
-
-    // Pomocnicze metody
-    private Stage createStyledDialog(String title) {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle(title);
-        return dialog;
-    }
-
-    private void setupDialog(Stage dialog, Pane root) {
-        Scene scene = new Scene(root);
-        dialog.setScene(scene);
-        animateDialog(dialog, root);
-        dialog.showAndWait();
     }
 
     public void showCloseShiftPanel() {
@@ -225,147 +61,385 @@ public class CashierPanelController {
         layout.setPadding(new Insets(20));
         layout.setAlignment(Pos.CENTER);
 
-        Button confirmButton = cashierPanel.createStyledButton("Potwierdź zamknięcie zmiany", "#E67E22");
+        Label label = new Label("Zamknięcie zmiany");
+        label.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        Button confirmButton = cashierPanel.createStyledButton("Zamknij zmianę", "#E67E22");
         confirmButton.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Zamknięcie zmiany");
-            alert.setHeaderText("Zmiana została pomyślnie zamknięta");
-            alert.setContentText("Dziękujemy za pracę w tej zmianie!");
-            alert.showAndWait();
+            showNotification("Zmiana zamknięta", "Zmiana została pomyślnie zamknięta.");
+            cashierPanel.setReportGenerated(true); // flaga do zamykania aplikacji
         });
 
-        layout.getChildren().add(confirmButton);
+        layout.getChildren().addAll(label, confirmButton);
+        cashierPanel.setCenterPane(layout);
+    }
+
+    public void showIssueReportPanel() {
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER_LEFT);
+
+        Label label = new Label("Zgłoś problem techniczny:");
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("Awaria sprzętu", "Błąd oprogramowania", "Inne");
+        typeBox.setPromptText("Wybierz typ problemu");
+
+        TextArea description = new TextArea();
+        description.setPromptText("Opisz problem...");
+        description.setWrapText(true);
+        description.setPrefHeight(100);
+
+        Button sendButton = cashierPanel.createStyledButton("Wyślij zgłoszenie", "#27AE60");
+        sendButton.setOnAction(e -> {
+            if (typeBox.getValue() == null || description.getText().trim().isEmpty()) {
+                showNotification("Błąd", "Uzupełnij wszystkie pola.");
+                return;
+            }
+
+            UserRepository userRepo = new UserRepository();
+            TechnicalIssueRepository issueRepo = new TechnicalIssueRepository();
+            try {
+                Employee emp = userRepo.getCurrentEmployee();
+                if (emp == null) {
+                    showNotification("Błąd", "Brak zalogowanego pracownika.");
+                    return;
+                }
+
+                TechnicalIssue issue = new TechnicalIssue(
+                        typeBox.getValue(),
+                        description.getText(),
+                        LocalDate.now(),
+                        emp,
+                        "Nowe"
+                );
+                issueRepo.dodajZgloszenie(issue);
+                showNotification("Sukces", "Zgłoszenie wysłane.");
+            } finally {
+                userRepo.close();
+                issueRepo.close();
+            }
+        });
+
+        layout.getChildren().addAll(label, typeBox, description, sendButton);
         cashierPanel.setCenterPane(layout);
     }
 
     public void showAbsenceRequestForm() {
-        Stage stage = new Stage();
-        stage.setTitle("Wniosek o nieobecność");
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER_LEFT);
 
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setVgap(10);
-        grid.setHgap(10);
+        Label label = new Label("Wniosek o nieobecność:");
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("Urlop wypoczynkowy", "Urlop na żądanie", "Zwolnienie lekarskie", "Inne");
+        typeBox.setPromptText("Typ wniosku");
 
-        Label reasonLabel = new Label("Powód:");
-        TextField reasonField = new TextField();
+        DatePicker startPicker = new DatePicker();
+        DatePicker endPicker = new DatePicker();
+        TextArea reason = new TextArea();
+        reason.setPromptText("Podaj powód...");
+        reason.setWrapText(true);
+        reason.setPrefHeight(80);
 
-        Label fromDateLabel = new Label("Data od:");
-        DatePicker fromDatePicker = new DatePicker();
+        Button submit = cashierPanel.createStyledButton("Wyślij wniosek", "#27AE60");
+        submit.setOnAction(e -> {
+            if (typeBox.getValue() == null || startPicker.getValue() == null || endPicker.getValue() == null || reason.getText().trim().isEmpty()) {
+                showNotification("Błąd", "Uzupełnij wszystkie pola.");
+                return;
+            }
+            if (startPicker.getValue().isAfter(endPicker.getValue())) {
+                showNotification("Błąd", "Data rozpoczęcia nie może być późniejsza niż zakończenia.");
+                return;
+            }
 
-        Label toDateLabel = new Label("Data do:");
-        DatePicker toDatePicker = new DatePicker();
+            AbsenceRequestRepository repo = new AbsenceRequestRepository();
+            UserRepository userRepo = new UserRepository();
+            try {
+                Employee emp = userRepo.getCurrentEmployee();
+                if (emp == null) {
+                    showNotification("Błąd", "Brak zalogowanego pracownika.");
+                    return;
+                }
 
-        Button submitButton = cashierPanel.createStyledButton("Wyślij wniosek", "#27AE60");
-        submitButton.setOnAction(e -> {
-            if (validateAbsenceForm(reasonField.getText(), fromDatePicker.getValue(), toDatePicker.getValue())) {
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Sukces");
-                alert.setHeaderText("Wniosek został wysłany");
-                alert.setContentText("Oczekuj potwierdzenia od kierownika");
-                alert.showAndWait();
-                stage.close();
+                AbsenceRequest request = new AbsenceRequest(
+                        typeBox.getValue(),
+                        java.sql.Date.valueOf(startPicker.getValue()),
+                        java.sql.Date.valueOf(endPicker.getValue()),
+                        reason.getText(),
+                        emp,
+                        AbsenceRequest.StatusWniosku.OCZEKUJE // Teraz używamy enuma zamiast String
+                );
+                repo.dodajWniosek(request);
+                showNotification("Sukces", "Wniosek został zapisany.");
+            } finally {
+                repo.close();
+                userRepo.close();
             }
         });
 
-        grid.add(reasonLabel, 0, 0);
-        grid.add(reasonField, 1, 0);
-        grid.add(fromDateLabel, 0, 1);
-        grid.add(fromDatePicker, 1, 1);
-        grid.add(toDateLabel, 0, 2);
-        grid.add(toDatePicker, 1, 2);
-        grid.add(submitButton, 1, 3);
-
-        Scene scene = new Scene(grid, 400, 250);
-        stage.setScene(scene);
-        stage.show();
+        layout.getChildren().addAll(label, typeBox, startPicker, endPicker, reason, submit);
+        cashierPanel.setCenterPane(layout);
     }
 
-    private boolean validateAbsenceForm(String reason, LocalDate fromDate, LocalDate toDate) {
-        if (reason == null || reason.trim().isEmpty()) {
-            showNotification("Błąd", "Musisz podać powód nieobecności");
-            return false;
+    private void startNewTransaction() {
+        Stage dialog = createStyledDialog("Nowa transakcja");
+        dialog.setMinWidth(800);
+        dialog.setMinHeight(600);
+
+        ObservableList<TransactionItem> cartItems = FXCollections.observableArrayList();
+        BorderPane mainLayout = new BorderPane();
+        mainLayout.setPadding(new Insets(20));
+
+        VBox productSearchBox = new VBox(10);
+        Label searchLabel = new Label("Wyszukaj produkt:");
+        TextField searchField = createStyledTextField("Wpisz nazwę produktu...");
+        TableView<Product> productTable = createProductTableWithSearch(searchField);
+
+        HBox quantityBox = new HBox(10);
+        Label quantityLabel = new Label("Ilość:");
+        Spinner<Integer> quantitySpinner = new Spinner<>(1, 100, 1);
+        quantitySpinner.setEditable(true);
+        quantitySpinner.setPrefWidth(100);
+        Button addToCartButton = cashierPanel.createStyledButton("Dodaj do koszyka");
+
+        quantityBox.getChildren().addAll(quantityLabel, quantitySpinner, addToCartButton);
+        quantityBox.setAlignment(Pos.CENTER_LEFT);
+        productSearchBox.getChildren().addAll(searchLabel, searchField, productTable, quantityBox);
+
+        VBox cartBox = new VBox(10);
+        Label cartLabel = new Label("Koszyk:");
+        TableView<TransactionItem> cartTable = createCartTable();
+        cartTable.setItems(cartItems);
+
+        HBox totalBox = new HBox(10);
+        Label totalLabel = new Label("Suma:");
+        Label totalPriceLabel = new Label("0.00 zł");
+        totalPriceLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        totalBox.getChildren().addAll(totalLabel, totalPriceLabel);
+        totalBox.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox buttonBox = new HBox(10);
+        Button confirmButton = cashierPanel.createStyledButton("Zatwierdź transakcję", "#27AE60");
+        Button cancelButton = cashierPanel.createStyledButton("Anuluj", "#E74C3C");
+        buttonBox.getChildren().addAll(confirmButton, cancelButton);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+
+        cartBox.getChildren().addAll(cartLabel, cartTable, totalBox, buttonBox);
+        addToCartButton.setOnAction(e -> {
+            Product selectedProduct = productTable.getSelectionModel().getSelectedItem();
+            if (selectedProduct != null) {
+                int quantity = quantitySpinner.getValue();
+                int availableQuantity = getDostepnaIlosc(selectedProduct);
+
+                if (availableQuantity < quantity) {
+                    showNotification("Błąd", "Niewystarczająca ilość produktu. Dostępne: " + availableQuantity);
+                    return;
+                }
+
+                boolean found = false;
+                for (TransactionItem item : cartItems) {
+                    if (item.getProduct().getId() == selectedProduct.getId()) {
+                        int newQuantity = item.getQuantity() + quantity;
+                        if (newQuantity > availableQuantity) {
+                            showNotification("Błąd", "Niewystarczająca ilość produktu. Dostępne: " + availableQuantity);
+                            return;
+                        }
+                        item.setQuantity(newQuantity);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    cartItems.add(new TransactionItem(selectedProduct, quantity));
+                }
+
+                cartTable.refresh();
+                updateTotalPrice(cartItems, totalPriceLabel);
+            }
+        });
+
+        confirmButton.setOnAction(e -> {
+            if (cartItems.isEmpty()) {
+                showNotification("Błąd", "Koszyk jest pusty. Dodaj produkty do koszyka.");
+                return;
+            }
+            saveTransaction(cartItems, dialog);
+        });
+
+        cancelButton.setOnAction(e -> dialog.close());
+
+        mainLayout.setLeft(productSearchBox);
+        mainLayout.setRight(cartBox);
+
+        Scene scene = new Scene(mainLayout);
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private TableView<Product> createProductTableWithSearch(TextField searchField) {
+        TableView<Product> table = new TableView<>();
+        table.setMinHeight(300);
+
+        TableColumn<Product, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+
+        TableColumn<Product, String> nameCol = new TableColumn<>("Nazwa");
+        nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+
+        TableColumn<Product, String> categoryCol = new TableColumn<>("Kategoria");
+        categoryCol.setCellValueFactory(new PropertyValueFactory<>("category"));
+
+        TableColumn<Product, Double> priceCol = new TableColumn<>("Cena");
+        priceCol.setCellValueFactory(new PropertyValueFactory<>("price"));
+
+        table.getColumns().addAll(idCol, nameCol, categoryCol, priceCol);
+
+        ProductRepository productRepo = new ProductRepository();
+        ObservableList<Product> productList = FXCollections.observableArrayList(productRepo.pobierzWszystkieProdukty());
+        productRepo.close();
+
+        table.setItems(productList);
+
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) {
+                table.setItems(productList);
+            } else {
+                ObservableList<Product> filteredList = FXCollections.observableArrayList();
+                for (Product product : productList) {
+                    if (product.getName().toLowerCase().contains(newValue.toLowerCase()) ||
+                            product.getCategory().toLowerCase().contains(newValue.toLowerCase())) {
+                        filteredList.add(product);
+                    }
+                }
+                table.setItems(filteredList);
+            }
+        });
+
+        return table;
+    }
+
+    private int getDostepnaIlosc(Product produkt) {
+        WarehouseRepository warehouseRepo = new WarehouseRepository();
+        int ilosc = 0;
+        try {
+            Warehouse stan = warehouseRepo.znajdzStanPoIdProduktu(produkt.getId());
+            if (stan != null) {
+                ilosc = stan.getIlosc();
+            }
+        } finally {
+            warehouseRepo.close();
         }
-        if (fromDate == null || toDate == null) {
-            showNotification("Błąd", "Musisz wybrać datę rozpoczęcia i zakończenia");
-            return false;
-        }
-        if (fromDate.isAfter(toDate)) {
-            showNotification("Błąd", "Data rozpoczęcia nie może być późniejsza niż zakończenia");
-            return false;
-        }
-        return true;
+        return ilosc;
     }
 
-    private void animateDialog(Stage dialog, Pane root) {
-        FadeTransition ft = new FadeTransition(Duration.millis(300), root);
-        ft.setFromValue(0.0);
-        ft.setToValue(1.0);
+    private TableView<TransactionItem> createCartTable() {
+        TableView<TransactionItem> table = new TableView<>();
+        table.setMinHeight(300);
 
-        TranslateTransition tt = new TranslateTransition(Duration.millis(300), root);
-        tt.setFromY(-20);
-        tt.setToY(0);
-
-        new ParallelTransition(ft, tt).play();
-    }
-
-    private void finalizeSale() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Finalizacja sprzedaży");
-        alert.setHeaderText("Transakcja zakończona");
-        alert.setContentText("Dziękujemy za zakupy w Stonce!");
-        alert.showAndWait();
-    }
-
-    private ObservableList<Product> getSampleProducts() {
-        return FXCollections.observableArrayList(
-                new Product("Mleko", 3.50),
-                new Product("Chleb", 4.20),
-                new Product("Jajka", 8.99),
-                new Product("Masło", 6.50),
-                new Product("Ser", 12.99)
+        TableColumn<TransactionItem, String> nameCol = new TableColumn<>("Nazwa");
+        nameCol.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getProduct().getName())
         );
+
+        TableColumn<TransactionItem, Integer> quantityCol = new TableColumn<>("Ilość");
+        quantityCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        quantityCol.setCellFactory(TextFieldTableCell.forTableColumn(new IntegerStringConverter()));
+        quantityCol.setOnEditCommit(event -> {
+            TransactionItem item = event.getRowValue();
+            int newValue = event.getNewValue();
+            int maxQuantity = getDostepnaIlosc(item.getProduct());
+            if (newValue > 0 && newValue <= maxQuantity) {
+                item.setQuantity(newValue);
+                updateTotalPrice(table.getItems(), null);
+            } else {
+                table.refresh();
+                showNotification("Błąd",
+                        "Nieprawidłowa ilość. Maksymalna dostępna ilość: " + maxQuantity);
+            }
+        });
+
+        TableColumn<TransactionItem, Double> priceCol = new TableColumn<>("Cena jedn.");
+        priceCol.setCellValueFactory(cellData ->
+                new SimpleDoubleProperty(
+                        cellData.getValue().getProduct().getPrice().doubleValue()
+                ).asObject()
+        );
+
+        TableColumn<TransactionItem, Double> totalCol = new TableColumn<>("Suma");
+        totalCol.setCellValueFactory(cellData ->
+                new SimpleDoubleProperty(
+                        cellData.getValue().getProduct().getPrice().doubleValue() *
+                                cellData.getValue().getQuantity()
+                ).asObject()
+        );
+
+        TableColumn<TransactionItem, Void> actionCol = new TableColumn<>("Akcje");
+        actionCol.setCellFactory(param -> new TableCell<>() {
+            private final Button removeButton = new Button("Usuń");
+            {
+                removeButton.setStyle("-fx-background-color: #E74C3C; -fx-text-fill: white;");
+                removeButton.setOnAction(event -> {
+                    TransactionItem item = getTableView().getItems().get(getIndex());
+                    getTableView().getItems().remove(item);
+                    updateTotalPrice(getTableView().getItems(), null);
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : removeButton);
+            }
+        });
+
+        table.getColumns().addAll(nameCol, quantityCol, priceCol, totalCol, actionCol);
+        table.setEditable(true);
+        return table;
     }
 
-    private TableView<SalesReport> createReportTable() {
-        TableView<SalesReport> tableView = new TableView<>();
-        tableView.setMinHeight(300);
-
-        TableColumn<SalesReport, String> idColumn = new TableColumn<>("Id_raportu");
-        idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
-        idColumn.setPrefWidth(100);
-
-        TableColumn<SalesReport, String> dateColumn = new TableColumn<>("Data utworzenia");
-        dateColumn.setCellValueFactory(new PropertyValueFactory<>("date"));
-        dateColumn.setPrefWidth(150);
-
-        TableColumn<SalesReport, String> typeColumn = new TableColumn<>("Typ raportu");
-        typeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
-        typeColumn.setPrefWidth(150);
-
-        TableColumn<SalesReport, Void> viewColumn = new TableColumn<>("Podgląd");
-        viewColumn.setCellFactory(getViewButtonCellFactory());
-        viewColumn.setPrefWidth(100);
-
-        tableView.getColumns().addAll(idColumn, dateColumn, typeColumn, viewColumn);
-        tableView.setItems(getSampleReports());
-
-        return tableView;
+    private void updateTotalPrice(ObservableList<TransactionItem> items, Label totalPriceLabel) {
+        double total = 0;
+        for (TransactionItem item : items) {
+            total += item.getProduct().getPrice().doubleValue() * item.getQuantity();
+        }
+        if (totalPriceLabel != null) {
+            totalPriceLabel.setText(String.format("%.2f zł", total));
+        }
     }
 
-    private ComboBox<String> createStyledComboBox(String... items) {
-        ComboBox<String> combo = new ComboBox<>();
-        combo.getItems().addAll(items);
-        combo.setStyle("-fx-background-color: #E0E0E0; -fx-padding: 8px;");
-        combo.getSelectionModel().selectFirst();
-        return combo;
+    private void saveTransaction(ObservableList<TransactionItem> items, Stage dialog) {
+        try {
+            UserRepository userRepo = new UserRepository();
+            Employee currentEmployee = userRepo.getCurrentEmployee();
+            if (currentEmployee == null) {
+                showNotification("Błąd", "Nie jesteś zalogowany. Zaloguj się ponownie.");
+                userRepo.close();
+                return;
+            }
+
+            Transaction transaction = new Transaction();
+            transaction.setPracownik(currentEmployee);
+            transaction.setData(new Date());
+
+            TransactionRepository transactionRepo = new TransactionRepository();
+            transactionRepo.dodajTransakcje(transaction);
+            transactionRepo.close();
+
+            userRepo.close();
+            showNotification("Sukces", "Transakcja została zapisana pomyślnie.");
+            dialog.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showNotification("Błąd", "Wystąpił błąd podczas zapisywania transakcji: " + e.getMessage());
+        }
     }
 
-    private DatePicker createStyledDatePicker() {
-        DatePicker dp = new DatePicker();
-        dp.setStyle("-fx-background-color: #E0E0E0; -fx-padding: 8px;");
-        dp.getEditor().setStyle("-fx-background-color: #E0E0E0;");
-        return dp;
+    private Stage createStyledDialog(String title) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle(title);
+        return dialog;
     }
 
     private TextField createStyledTextField(String prompt) {
@@ -373,22 +447,6 @@ public class CashierPanelController {
         field.setPromptText(prompt);
         field.setStyle("-fx-background-color: #E0E0E0; -fx-padding: 8px;");
         return field;
-    }
-
-    private TextArea createStyledTextArea(String prompt) {
-        TextArea area = new TextArea();
-        area.setPromptText(prompt);
-        area.setStyle("-fx-background-color: #E0E0E0; -fx-padding: 8px;");
-        area.setWrapText(true);
-        return area;
-    }
-
-    private boolean validateReport(String type, String desc) {
-        if (type == null || desc.trim().isEmpty()) {
-            showNotification("Błąd", "Uzupełnij wszystkie pola");
-            return false;
-        }
-        return true;
     }
 
     private void showNotification(String title, String message) {
@@ -399,41 +457,24 @@ public class CashierPanelController {
         alert.showAndWait();
     }
 
-    // Pozostałe metody z oryginalnej implementacji...
-
-    // Wewnętrzne klasy danych
-    public static class Product {
-        private final String name;
-        private final double price;
-
-        public Product(String name, double price) {
-            this.name = name;
-            this.price = price;
-        }
-
-        public String getName() { return name; }
-        public double getPrice() { return price; }
-    }
-
-    public static class SalesReport {
-        private final String id;
-        private final String date;
-        private final String type;
-
-        public SalesReport(String id, String date, String type) {
-            this.id = id;
-            this.date = date;
-            this.type = type;
-        }
-
-        public String getId() { return id; }
-        public String getDate() { return date; }
-        public String getType() { return type; }
-    }
-
     public void logout() {
-        Stage primaryStage = cashierPanel.getPrimaryStage();
-        primaryStage.close();
-        HelloApplication.showLoginScreen(primaryStage);
+        UserRepository.resetCurrentEmployee();
+        Stage stage = cashierPanel.getPrimaryStage();
+        stage.close();
+        HelloApplication.showLoginScreen(stage); // zakładamy istnienie tej metody
+    }
+
+    public static class TransactionItem {
+        private final Product product;
+        private int quantity;
+
+        public TransactionItem(Product product, int quantity) {
+            this.product = product;
+            this.quantity = quantity;
+        }
+
+        public Product getProduct() { return product; }
+        public int getQuantity() { return quantity; }
+        public void setQuantity(int quantity) { this.quantity = quantity; }
     }
 }

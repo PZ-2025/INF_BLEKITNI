@@ -9,6 +9,17 @@ import org.example.wyjatki.AgeException;
 import java.math.BigDecimal;
 import java.util.Date;
 
+@SqlResultSetMapping(
+        name = "EmployeeWorkloadMapping",
+        classes = @ConstructorResult(
+                targetClass = pdf.WorkloadReportGenerator.EmployeeWorkload.class,
+                columns = {
+                        @ColumnResult(name = "employeeName", type = String.class),
+                        @ColumnResult(name = "department", type = String.class),
+                        @ColumnResult(name = "totalHours", type = Double.class)
+                }
+        )
+)
 @Entity
 @Table(name = "Pracownicy")
 @Access(AccessType.FIELD)
@@ -42,6 +53,9 @@ public class Employee extends Person {
     @Temporal(TemporalType.DATE)
     private Date sickLeaveStartDate;
 
+    @Column(name = "usuniety", nullable = false)
+    private boolean usuniety = false;
+
     public Employee() {}
 
     public Employee(String name, String surname, int age, String email,
@@ -59,18 +73,23 @@ public class Employee extends Person {
 
     public Employee(String name, String surname, int age, Address adres,
                     String login, String password, String stanowisko, BigDecimal zarobki)
-            throws SalaryException {
-        super();
-        this.setName(name);
-        this.setSurname(surname);
-        this.setAge(age);
+            throws NameException, AgeException, SalaryException, PasswordException {
+        super(name, surname, age, null);
         this.adres = adres;
-        this.login = login;
-        this.password = password;
+        setLogin(login);
+        setPassword(password);
         this.stanowisko = stanowisko;
         setZarobki(zarobki);
         this.onSickLeave = false;
         this.sickLeaveStartDate = null;
+    }
+
+    public boolean isUsuniety() {
+        return usuniety;
+    }
+
+    public void setUsuniety(boolean usuniety) {
+        this.usuniety = usuniety;
     }
 
     public int getId() {

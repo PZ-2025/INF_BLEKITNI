@@ -4,6 +4,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -23,6 +24,7 @@ public class CashierPanel {
     private BorderPane root;
     private Stage primaryStage;
     private CashierPanelController controller;
+    private boolean reportGenerated = false; // Flaga informująca, czy raport został wygenerowany
 
     /**
      * Tworzy nowy panel kasjera i wyświetla domyślny widok sprzedaży.
@@ -54,6 +56,15 @@ public class CashierPanel {
         // Tworzenie sceny
         Scene scene = new Scene(root, 700, 450);
         primaryStage.setScene(scene);
+
+        // Obsługa próby zamknięcia okna
+        primaryStage.setOnCloseRequest(event -> {
+            if (!reportGenerated) {
+                event.consume(); // Zapobiega zamknięciu okna
+                AlterBox.display("Nie można zamknąć", "Nie można zamknąć okna bez wygenerowania raportu sprzedaży.");
+            }
+        });
+
         primaryStage.show();
     }
 
@@ -101,7 +112,13 @@ public class CashierPanel {
 
         // Przycisk wylogowania (czerwony)
         Button logoutButton = createStyledButton("Wyloguj się", "#E74C3C");
-        logoutButton.setOnAction(e -> controller.logout());
+        logoutButton.setOnAction(e -> {
+            if (!reportGenerated) {
+                AlterBox.display("Brak raportu", "Nie można wylogować się bez wygenerowania raportu sprzedaży.");
+            } else {
+                controller.logout();
+            }
+        });
 
         menu.getChildren().add(logo);
         menu.getChildren().addAll(
@@ -214,5 +231,14 @@ public class CashierPanel {
      */
     public Stage getPrimaryStage() {
         return primaryStage;
+    }
+
+    /**
+     * Ustawia flagę informującą, że raport został wygenerowany.
+     *
+     * @param generated wartość logiczna
+     */
+    public void setReportGenerated(boolean generated) {
+        this.reportGenerated = generated;
     }
 }

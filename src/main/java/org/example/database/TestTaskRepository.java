@@ -10,7 +10,7 @@ package org.example.database;
 import org.example.sys.Task;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -30,7 +30,8 @@ public class TestTaskRepository {
                     sdf.parse("2025-05-01"),
                     "Nowe",
                     "Przyjąć dostawę mleka.",
-                    "Duży"
+                    "Duży",
+                    LocalTime.of(1, 15)
             );
 
             Task zadanie2 = new Task(
@@ -38,7 +39,8 @@ public class TestTaskRepository {
                     sdf.parse("2025-05-03"),
                     "Nowe",
                     "Sprawdzić ilość jogurtów.",
-                    "Średni"
+                    "Średni",
+                    LocalTime.of(0, 30)
             );
 
             Task zadanie3 = new Task(
@@ -46,7 +48,8 @@ public class TestTaskRepository {
                     sdf.parse("2025-05-05"),
                     "W trakcie",
                     "Aktualizacja cen nabiału.",
-                    "Duży"
+                    "Duży",
+                    LocalTime.of(2, 45)
             );
 
             taskRepo.dodajZadanie(zadanie1);

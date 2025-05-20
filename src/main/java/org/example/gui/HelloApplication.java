@@ -95,6 +95,7 @@ HelloApplication extends Application {
         Label passwordLabel = new Label("Hasło");
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Tutaj podaj hasło");
+
         passwordField.setStyle("-fx-background-color: #FFD966; -fx-padding: 5;");
 
         grid.add(loginLabel, 0, 0);

@@ -12,10 +12,19 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
+    @Column(name = "Miejscowosc")
     private String miejscowosc;
+
+    @Column(name = "Numer_domu")
     private String numerDomu;
+
+    @Column(name = "Numer_mieszkania")
     private String numerMieszkania;
+
+    @Column(name = "Kod_pocztowy")
     private String kodPocztowy;
+
+    @Column(name = "Miasto")
     private String miasto;
 
     @OneToMany(mappedBy = "adres")
@@ -38,4 +47,12 @@ public class Address {
 
     public String getMiasto() { return miasto; }
     public void setMiasto(String miasto) { this.miasto = miasto; }
+
+    @Override
+    public String toString() {
+        String mieszkanie = (numerMieszkania != null && !numerMieszkania.isEmpty())
+                ? "/" + numerMieszkania
+                : "";
+        return miejscowosc + ", ul. " + numerDomu + mieszkanie + ", " + kodPocztowy + " " + miasto;
+    }
 }

@@ -1,57 +1,102 @@
 package org.example.sys;
 
+import org.example.wyjatki.AgeException;
 import org.example.wyjatki.PasswordException;
 import org.example.wyjatki.SalaryException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Klasa Admin rozszerzająca Employee, reprezentuje użytkownika z uprawnieniami administratora.
+ * Klasa reprezentująca rolę administratora systemu – logiczną nakładkę na encję Employee.
  */
-public class Admin extends Employee {
+public class Admin {
 
-    public Admin(String name, String surname, int age, String email,
-                 String login, String password, Address adres,
-                 String stanowisko, BigDecimal zarobki)
-            throws Exception {
-        super(name, surname, age, email, login, password, adres, stanowisko, zarobki);
+    private final Employee employee;
+    private final List<Employee> allEmployees;
+
+    public Admin(Employee employee) {
+        this.employee = employee;
+        this.allEmployees = new ArrayList<>();
     }
 
-    public Admin() {
-        super();
+    public Employee getEmployee() {
+        return employee;
     }
 
     public boolean isAdmin() {
         return true;
     }
 
-    public void updateName(Employee employee, String newName) {
-        employee.setName(newName);
+    public void addEmployee(Employee e) {
+        if (e != null && !allEmployees.contains(e)) {
+            allEmployees.add(e);
+        }
     }
 
-    public void updateSurname(Employee employee, String newSurname) {
-        employee.setSurname(newSurname);
+    public void removeEmployee(Employee e) {
+        allEmployees.remove(e);
     }
 
-    public void updateAge(Employee employee, int newAge) {
-        employee.setAge(newAge);
+    public List<Employee> getAllEmployees() {
+        return allEmployees;
     }
 
-    public void updateAddress(Employee employee, Address address) {
+    public void updateName(String newName) {
+        try {
+            employee.setName(newName);
+        } catch (Exception e) {
+            System.err.println("Błąd zmiany imienia: " + e.getMessage());
+        }
+    }
+
+    public void updateSurname(String newSurname) {
+        try {
+            employee.setSurname(newSurname);
+        } catch (Exception e) {
+            System.err.println("Błąd zmiany nazwiska: " + e.getMessage());
+        }
+    }
+
+    public void updateAge(int newAge) {
+        try {
+            employee.setAge(newAge);
+        } catch (AgeException e) {
+            System.err.println("Błąd zmiany wieku: " + e.getMessage());
+        }
+    }
+
+    public void updateAddress(Address address) {
         employee.setAdres(address);
     }
 
-    public void updatePassword(Employee employee, String newPassword)
-            throws PasswordException {
-        employee.setPassword(newPassword);
+    public void updatePassword(String newPassword) {
+        try {
+            employee.setPassword(newPassword);
+        } catch (PasswordException e) {
+            System.err.println("Błąd zmiany hasła: " + e.getMessage());
+        }
     }
 
-    public void updateDepartment(Employee employee, String newDepartment) {
+    public void updateDepartment(String newDepartment) {
         employee.setStanowisko(newDepartment);
     }
 
-    public void updateSalary(Employee employee, BigDecimal newSalary)
-            throws SalaryException {
-        employee.setZarobki(newSalary);
+    public void updateSalary(BigDecimal newSalary) {
+        try {
+            employee.setZarobki(newSalary);
+        } catch (SalaryException e) {
+            System.err.println("Błąd zmiany wynagrodzenia: " + e.getMessage());
+        }
+    }
+
+    public void resetSystemSettings() {
+        System.out.println("Administrator " + employee.getLogin() + " resetuje ustawienia systemowe.");
+    }
+
+    public void generateFullSystemReport() {
+        System.out.println("Administrator " + employee.getLogin() + " generuje pełny raport systemowy (łącznie: "
+                + allEmployees.size() + " pracowników).");
     }
 }

@@ -6,7 +6,7 @@ import org.example.wyjatki.AgeException;
 import org.example.wyjatki.NameException;
 
 @MappedSuperclass
-public class Person {
+public abstract class Person {
 
     @Column(name = "Imie")
     private String name;
