@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS Zadania (
     Nazwa VARCHAR(100),
     Data DATE,
     Status VARCHAR(50),
-    Opis TEXT
+    Opis TEXT,
+    Priorytet VARCHAR(50)
 );
 
 -- Tabela Wnioski o nieobecnosc
@@ -153,11 +154,11 @@ VALUES
 
 INSERT INTO Zadania (Nazwa, Data, Status, Opis)
 VALUES 
-('Sprawdzenie stanu magazynu', '2025-04-01', 'Nowe', 'Weryfikacja towaru przed dostawą'),
-('Inwentaryzacja', '2025-04-15', 'Nowe', 'Spis towarów'),
-('Dostawa mleka', '2025-04-10', 'Zakończone', 'Odbiór dostawy'),
-('Wymiana regałów', '2025-04-12', 'W trakcie', 'Wymiana regałów w dziale nabiałowym'),
-('Porządkowanie zaplecza', '2025-04-08', 'Zakończone', 'Czyszczenie i sortowanie towarów');
+('Sprawdzenie stanu magazynu', '2025-04-01', 'Nowe', 'Weryfikacja towaru przed dostawą', 'Duży'),
+('Inwentaryzacja', '2025-04-15', 'Nowe', 'Spis towarów', 'Duży'),
+('Dostawa mleka', '2025-04-10', 'Zakończone', 'Odbiór dostawy', 'Średni'),
+('Wymiana regałów', '2025-04-12', 'W trakcie', 'Wymiana regałów w dziale nabiałowym', 'Średni'),
+('Porządkowanie zaplecza', '2025-04-08', 'Zakończone', 'Czyszczenie i sortowanie towarów', 'Mały');
 
 INSERT INTO Zadania_Pracownicy (Id_pracownika, Id_zadania)
 VALUES 

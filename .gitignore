@@ -39,3 +39,5 @@ build/
 
 # Ignoruj plik z danymi do logowania
 PASS.txt
+
+backups/

@@ -32,6 +32,8 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String opis;
 
+    private String priorytet;
+
     /**
      * Konstruktor bezparametrowy wymagany przez JPA.
      */
@@ -46,12 +48,14 @@ public class Task {
      * @param data   termin wykonania
      * @param status status zadania
      * @param opis   opis zadania
+     * @param priorytet priorytet zadania
      */
-    public Task(String nazwa, Date data, String status, String opis) {
+    public Task(String nazwa, Date data, String status, String opis, String priorytet) {
         this.nazwa = nazwa;
         this.data = data;
         this.status = status;
         this.opis = opis;
+        this.priorytet = priorytet;
     }
 
     // ==================== Gettery i Settery ====================
@@ -92,6 +96,10 @@ public class Task {
         this.opis = opis;
     }
 
+    public String getPriorytet() { return priorytet; }
+
+    public void setPriorytet(String priorytet) { this.priorytet = priorytet; }
+
     /**
      * Zwraca reprezentację tekstową zadania.
      *
@@ -100,9 +108,10 @@ public class Task {
     @Override
     public String toString() {
         return String.format(
-                "Zadanie: %s, Termin: %s",
+                "Zadanie: %s, Termin: %s, Priorytet: %s",
                 nazwa,
-                data != null ? data.toString() : "brak daty"
+                data != null ? data.toString() : "brak daty",
+                priorytet != null ? priorytet : "brak"
         );
     }
 }

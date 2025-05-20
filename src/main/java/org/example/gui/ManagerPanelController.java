@@ -71,7 +71,14 @@ public class ManagerPanelController {
                 )
         );
 
-        taskTable.getColumns().addAll(nameCol, dateCol);
+        TableColumn<Task, String> priorityCol = new TableColumn<>("Priorytet");
+        priorityCol.setCellValueFactory(
+                data -> new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().getPriorytet()
+                )
+        );
+        
+        taskTable.getColumns().addAll(nameCol, dateCol, priorityCol);
         taskTable.getItems().addAll(taskRepository.pobierzWszystkieZadania());
 
         HBox taskButtons = new HBox(10);
@@ -148,6 +155,10 @@ public class ManagerPanelController {
         Label dateLabel = new Label("Termin");
         DatePicker deadlinePicker = new DatePicker();
 
+        Label priorityLabel = new Label("Priorytet");
+        ComboBox<String> priorityCombo = new ComboBox<>();
+        priorityCombo.getItems().addAll("Duży", "Średni", "Mały");
+
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
 
@@ -162,13 +173,14 @@ public class ManagerPanelController {
                 String opis = descriptionArea.getText();
                 String status = statusCombo.getValue();
                 java.sql.Date data = java.sql.Date.valueOf(deadlinePicker.getValue());
+                String priorytet = priorityCombo.getValue();
 
-                if (nazwa.isEmpty() || opis.isEmpty() || status == null || data == null) {
+                if (nazwa.isEmpty() || opis.isEmpty() || status == null || data == null || priorytet == null) {
                     showAlert(Alert.AlertType.WARNING, "Błąd", "Wypełnij wszystkie pola.");
                     return;
                 }
 
-                Task noweZadanie = new Task(nazwa, data, status, opis);
+                Task noweZadanie = new Task(nazwa, data, status, opis, priorytet);
                 taskRepository.dodajZadanie(noweZadanie);
 
                 showAlert(Alert.AlertType.INFORMATION, "Sukces", "Zadanie dodane!");
@@ -187,6 +199,7 @@ public class ManagerPanelController {
                 descLabel, descriptionArea,
                 statusLabel, statusCombo,
                 dateLabel, deadlinePicker,
+                priorityLabel, priorityCombo,
                 buttonBox
         );
 
@@ -311,6 +324,11 @@ public class ManagerPanelController {
             );
         }
 
+        Label priorityLabel = new Label("Priorytet:");
+        ComboBox<String> priorityCombo = new ComboBox<>();
+        priorityCombo.getItems().addAll("Duży", "Średni", "Mały");
+        priorityCombo.setValue(task.getPriorytet());
+
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER);
 
@@ -325,6 +343,7 @@ public class ManagerPanelController {
                 if (deadlinePicker.getValue() != null) {
                     task.setData(java.sql.Date.valueOf(deadlinePicker.getValue()));
                 }
+                task.setPriorytet(priorityCombo.getValue());
                 taskRepository.aktualizujZadanie(task);
 
                 showAlert(Alert.AlertType.INFORMATION, "Sukces",
@@ -346,6 +365,7 @@ public class ManagerPanelController {
                 descLabel, descArea,
                 statusLabel, statusCombo,
                 dateLabel, deadlinePicker,
+                priorityLabel, priorityCombo,
                 buttonBox
         );
 

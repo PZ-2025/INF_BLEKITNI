@@ -29,21 +29,24 @@ public class TestTaskRepository {
                     "Przyjęcie dostawy",
                     sdf.parse("2025-05-01"),
                     "Nowe",
-                    "Przyjąć dostawę mleka."
+                    "Przyjąć dostawę mleka.",
+                    "Duży"
             );
 
             Task zadanie2 = new Task(
                     "Sprawdzenie stanów",
                     sdf.parse("2025-05-03"),
                     "Nowe",
-                    "Sprawdzić ilość jogurtów."
+                    "Sprawdzić ilość jogurtów.",
+                    "Średni"
             );
 
             Task zadanie3 = new Task(
                     "Aktualizacja cen",
                     sdf.parse("2025-05-05"),
                     "W trakcie",
-                    "Aktualizacja cen nabiału."
+                    "Aktualizacja cen nabiału.",
+                    "Duży"
             );
 
             taskRepo.dodajZadanie(zadanie1);
