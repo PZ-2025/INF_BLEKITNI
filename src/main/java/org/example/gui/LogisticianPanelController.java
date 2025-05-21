@@ -72,6 +72,46 @@ public class LogisticianPanelController {
         logisticianPanel.setCenterPane(layout);
     }
 
+    private void showAddProductDialog(TableView<org.example.sys.Product> table) {
+        Stage stage = new Stage();
+        stage.setTitle("Dodaj produkt");
+
+        GridPane grid = new GridPane();
+        grid.setPadding(new Insets(20));
+        grid.setHgap(10); grid.setVgap(10);
+
+        TextField nameField     = new TextField();
+        ComboBox<String> catBox = new ComboBox<>();
+        catBox.getItems().addAll(productRepository.pobierzWszystkieKategorii());
+        TextField priceField    = new TextField();
+        TextField qtyField      = new TextField();
+
+        grid.addRow(0, new Label("Nazwa:"), nameField);
+        grid.addRow(1, new Label("Kategoria:"), catBox);
+        grid.addRow(2, new Label("Cena:"), priceField);
+        grid.addRow(3, new Label("Ilość w magazynie:"), qtyField);
+
+        Button save = new Button("Zapisz");
+        save.setOnAction(e -> {
+            try {
+                double price = Double.parseDouble(priceField.getText().replace(',','.'));
+                int qty      = Integer.parseInt(qtyField.getText());
+                org.example.sys.Product p = new org.example.sys.Product(
+                        nameField.getText(), catBox.getValue(), BigDecimal.valueOf(price), qty
+                );
+                productRepository.dodajProdukt(p);
+                table.getItems().add(p);
+                stage.close();
+            } catch (Exception ex) {
+                showAlert(Alert.AlertType.ERROR, "Błąd", "Niepoprawne dane");
+            }
+        });
+        grid.add(save, 1, 4);
+
+        stage.setScene(new Scene(grid, 360, 250));
+        stage.show();
+    }
+
     /**
      * Wyświetla panel zarządzania zamówieniami.
      */
@@ -269,7 +309,7 @@ public class LogisticianPanelController {
 
 
 
-    private void runLibraryTest() {
+    public void runLibraryTest() {
         try {
             WarehouseRaport generator = new WarehouseRaport();
             generator.setLogoPath("src/main/resources/logo.png");

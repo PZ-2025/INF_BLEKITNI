@@ -297,4 +297,7 @@ public class ProductRepository {
             logger.info("close() – EMF zamknięty");
         }
     }
+
+    public String pobierzWszystkieKategorii() {
+    }
 }

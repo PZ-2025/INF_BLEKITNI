@@ -1,10 +1,3 @@
-/*
- * Classname: LogisticianPanel
- * Version information: 1.1
- * Date: 2025-04-11
- * Copyright notice: © BŁĘKITNI
- */
-
 package org.example.gui;
 
 import javafx.animation.FadeTransition;
@@ -29,22 +22,17 @@ import java.util.Objects;
  */
 public class LogisticianPanel {
 
-    private BorderPane root;
-    private Stage primaryStage;
-    private LogisticianPanelController controller;
+    private final BorderPane root;
+    private final Stage primaryStage;
+    private final LogisticianPanelController controller;
 
-    /**
-     * Konstruktor klasy LogisticianPanel.
-     *
-     * @param primaryStage główna scena przypisana do panelu
-     */
     public LogisticianPanel(Stage primaryStage) {
         this.primaryStage = primaryStage;
-        primaryStage.setMinWidth(700);
-        primaryStage.setMinHeight(450);
-        this.controller = new LogisticianPanelController(this);
+        this.controller   = new LogisticianPanelController(this);
 
         primaryStage.setTitle("Panel logistyka");
+        primaryStage.setMinWidth(700);
+        primaryStage.setMinHeight(450);
 
         root = new BorderPane();
         root.setPadding(new Insets(10));
@@ -53,19 +41,16 @@ public class LogisticianPanel {
         VBox menu = createMenu();
         root.setLeft(menu);
 
-        controller.showInventoryReports(); // domyślny widok
+        // domyślnie pokazujemy raporty
+        showInventoryReports();
 
         animateFadeIn(menu, 1000);
         animateSlideDown(menu, 800);
 
-        Scene scene = new Scene(root, 700, 450);
-        primaryStage.setScene(scene);
+        primaryStage.setScene(new Scene(root, 700, 450));
         primaryStage.show();
     }
 
-    /**
-     * Tworzy menu boczne z logo i przyciskami.
-     */
     private VBox createMenu() {
         VBox menu = new VBox(10);
         menu.setPadding(new Insets(10));
@@ -73,85 +58,94 @@ public class LogisticianPanel {
         menu.setStyle("-fx-background-color: #E0E0E0; -fx-border-radius: 10; -fx-background-radius: 10;");
 
         // logo
-        Image image = new Image(Objects.requireNonNull(
-                getClass().getResourceAsStream("/logo.png")
+        ImageView logo = new ImageView(new Image(
+                Objects.requireNonNull(getClass().getResourceAsStream("/logo.png"))
         ));
-        ImageView logo = new ImageView(image);
         logo.setFitWidth(100);
-        logo.setFitHeight(100);
         logo.setPreserveRatio(true);
 
-        // przyciski
-        Button inventoryButton = createStyledButton("Zarządzanie magazynem");
-        inventoryButton.setOnAction(e -> controller.showInventoryManagement());
+        Button invBtn    = createStyledButton("Zarządzanie magazynem");
+        Button ordBtn    = createStyledButton("Zamówienia");
+        Button repBtn    = createStyledButton("Raporty magazynowe");
+        Button testBtn   = createStyledButton("Test raportu");              // nowy
+        Button absenceBtn= createStyledButton("Wniosek o nieobecność");
+        Button logoutBtn = createStyledButton("Wyloguj", "#E74C3C");
 
-        Button ordersButton = createStyledButton("Zamówienia");
-        ordersButton.setOnAction(e -> controller.showOrdersPanel());
+        // podpinamy akcje
+        invBtn.setOnAction(e -> showInventoryManagement());
+        ordBtn.setOnAction(e -> showOrdersPanel());
+        repBtn.setOnAction(e -> showInventoryReports());
+        testBtn.setOnAction(e-> runLibraryTest());                          // test biblioteki
+        absenceBtn.setOnAction(e-> showAbsenceRequestForm());
+        logoutBtn.setOnAction(e-> logout());
 
-        Button reportsButton = createStyledButton("Raporty magazynowe");
-        reportsButton.setOnAction(e -> controller.showInventoryReports());
-
-        Button absenceButton = createStyledButton("Złóż wniosek o nieobecność");
-        absenceButton.setOnAction(e -> controller.showAbsenceRequestForm());
-
-        Button logoutButton = createStyledButton("Wyloguj", "#E74C3C");
-        logoutButton.setOnAction(e -> controller.logout());
-
-        menu.getChildren().addAll(logo, inventoryButton, ordersButton, reportsButton, absenceButton, logoutButton);
-
+        menu.getChildren().addAll(
+                logo,
+                invBtn,
+                ordBtn,
+                repBtn,
+                testBtn,       // wyświetli okno testu raportu
+                absenceBtn,
+                logoutBtn
+        );
         return menu;
     }
 
-    /**
-     * Stylizuje przyciski jak w panelu admina.
-     */
     private Button createStyledButton(String text) {
         return createStyledButton(text, "#2980B9");
     }
 
     private Button createStyledButton(String text, String color) {
-        Button button = new Button(text);
-        button.setStyle("-fx-background-color: " + color
-                + "; -fx-text-fill: white; -fx-font-weight: bold;");
-
-        button.setOnMouseEntered(e -> {
-            ScaleTransition scale = new ScaleTransition(Duration.millis(200), button);
-            scale.setToX(1.1);
-            scale.setToY(1.1);
-            scale.play();
+        Button btn = new Button(text);
+        btn.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-weight: bold;");
+        btn.setOnMouseEntered(e -> {
+            ScaleTransition st = new ScaleTransition(Duration.millis(200), btn);
+            st.setToX(1.1); st.setToY(1.1); st.play();
         });
-
-        button.setOnMouseExited(e -> {
-            ScaleTransition scale = new ScaleTransition(Duration.millis(200), button);
-            scale.setToX(1);
-            scale.setToY(1);
-            scale.play();
+        btn.setOnMouseExited(e -> {
+            ScaleTransition st = new ScaleTransition(Duration.millis(200), btn);
+            st.setToX(1); st.setToY(1); st.play();
         });
-
-        return button;
+        return btn;
     }
 
-    private void animateFadeIn(VBox element, int duration) {
-        FadeTransition fade = new FadeTransition(Duration.millis(duration), element);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-        fade.play();
+    private void animateFadeIn(VBox v, int dur) {
+        FadeTransition ft = new FadeTransition(Duration.millis(dur), v);
+        ft.setFromValue(0); ft.setToValue(1); ft.play();
+    }
+    private void animateSlideDown(VBox v, int dur) {
+        TranslateTransition tt= new TranslateTransition(Duration.millis(dur), v);
+        tt.setFromY(-50); tt.setToY(0); tt.setInterpolator(Interpolator.EASE_BOTH); tt.play();
     }
 
-    private void animateSlideDown(VBox element, int duration) {
-        TranslateTransition slide = new TranslateTransition(Duration.millis(duration), element);
-        slide.setFromY(-50);
-        slide.setToY(0);
-        slide.setInterpolator(Interpolator.EASE_BOTH);
-        slide.play();
-    }
-
+    /** Ustawia zawartość głównego obszaru. */
     public void setCenterPane(javafx.scene.layout.Pane pane) {
         root.setCenter(pane);
     }
 
+    /** Dostęp do sceny (używane przez kontroler). */
     public Stage getPrimaryStage() {
         return primaryStage;
     }
-}
 
+
+    /* === Tutaj – wszystkie _delegaty_ do kontrolera === */
+
+    /** Zarządzanie magazynem. */
+    public void showInventoryManagement()     { controller.showInventoryManagement(); }
+
+    /** Panel zamówień. */
+    public void showOrdersPanel()             { controller.showOrdersPanel(); }
+
+    /** Raporty magazynowe. */
+    public void showInventoryReports()        { controller.showInventoryReports(); }
+
+    /** Formularz nieobecności. */
+    public void showAbsenceRequestForm()      { controller.showAbsenceRequestForm(); }
+
+    /** Test integracji z biblioteką raportów. */
+    public void runLibraryTest()              { controller.runLibraryTest(); }
+
+    /** Wylogowanie / powrót do logowania. */
+    public void logout()                      { controller.logout(); }
+}
