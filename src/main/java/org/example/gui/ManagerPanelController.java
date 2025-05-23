@@ -1,7 +1,7 @@
 /*
  * Classname: ManagerPanelController
- * Version information: 1.1
- * Date: 2025-04-27
+ * Version information: 1.3
+ * Date: 2025-05-22
  * Copyright notice: © BŁĘKITNI
  */
 
@@ -15,13 +15,15 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.example.database.AbsenceRequestRepository;
-import org.example.repository.TaskRepository;
+import org.example.database.TaskRepository;
 import org.example.database.UserRepository;
 import org.example.sys.AbsenceRequest;
 import org.example.sys.Employee;
 import org.example.sys.Task;
 
-import java.util.Date;
+import java.time.LocalTime;
+import java.sql.Date;
+
 
 /**
  * Kontroler logiki interfejsu użytkownika dla panelu kierownika.
@@ -61,21 +63,21 @@ public class ManagerPanelController {
         TableColumn<Task, String> nameCol = new TableColumn<>("Zadanie");
         nameCol.setCellValueFactory(
                 data -> new javafx.beans.property.SimpleStringProperty(
-                        data.getValue().getNazwa()
+                        data.getValue().getName()
                 )
         );
 
         TableColumn<Task, String> dateCol = new TableColumn<>("Termin");
         dateCol.setCellValueFactory(
                 data -> new javafx.beans.property.SimpleStringProperty(
-                        data.getValue().getData() != null
-                                ? data.getValue().getData().toString()
+                        data.getValue().getDate() != null
+                                ? data.getValue().getDate().toString()
                                 : "brak daty"
                 )
         );
 
         taskTable.getColumns().addAll(nameCol, dateCol);
-        taskTable.getItems().addAll(taskRepository.pobierzWszystkieZadania());
+        taskTable.getItems().addAll(taskRepository.getAllTasks());
 
         HBox taskButtons = new HBox(10);
         taskButtons.setAlignment(Pos.CENTER);
@@ -101,7 +103,7 @@ public class ManagerPanelController {
         deleteButton.setOnAction(e -> {
             Task selectedTask = taskTable.getSelectionModel().getSelectedItem();
             if (selectedTask != null) {
-                taskRepository.usunZadanie(selectedTask);
+                taskRepository.removeTask(selectedTask);
                 showAlert(Alert.AlertType.INFORMATION, "Sukces", "Usunięto zadanie.");
                 showTaskPanel();
             } else {
@@ -170,27 +172,36 @@ public class ManagerPanelController {
         saveButton.setStyle("-fx-background-color: #2980B9; -fx-text-fill: white;");
         saveButton.setOnAction(e -> {
             try {
-                String nazwa = nameField.getText();
-                String opis = descriptionArea.getText();
-                String status = statusCombo.getValue();
-                java.sql.Date data = java.sql.Date.valueOf(deadlinePicker.getValue());
+                String name   = nameField.getText();
+                String description    = descriptionArea.getText();
+                String status  = statusCombo.getValue();
+                // deadlinePicker to Twój DatePicker z datą terminu
+                Date date = Date.valueOf(deadlinePicker.getValue());
 
-                if (nazwa.isEmpty() || opis.isEmpty() || status == null || data == null) {
+                // jeśli masz pole timeField (np. Spinner<LocalTime>), użyj jej:
+                // LocalTime timeOfShift = timeField.getValue();
+                // a jeśli nie, użyj bieżącej godziny:
+                LocalTime timeOfShift = LocalTime.now();
+
+                if (name.isEmpty() || description.isEmpty() || status == null || date == null) {
                     showAlert(Alert.AlertType.WARNING, "Błąd", "Wypełnij wszystkie pola.");
                     return;
                 }
 
-                Task noweZadanie = new Task(nazwa, data, status, opis);
-                taskRepository.dodajZadanie(noweZadanie);
+                // teraz konstruktor pięcio-argumentowy
+                Task newTask = new Task(name, date, status, description, timeOfShift);
+                taskRepository.addTask(newTask);
 
                 showAlert(Alert.AlertType.INFORMATION, "Sukces", "Zadanie dodane!");
                 showTaskPanel();
+
             } catch (Exception ex) {
                 ex.printStackTrace();
                 showAlert(Alert.AlertType.ERROR, "Błąd",
                         "Nie udało się dodać zadania: " + ex.getMessage());
             }
         });
+
 
         buttonBox.getChildren().addAll(backButton, saveButton);
 
@@ -229,16 +240,16 @@ public class ManagerPanelController {
         // Kolumna typu wniosku
         TableColumn<AbsenceRequest, String> typeColumn = new TableColumn<>("Typ wniosku");
         typeColumn.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
-                data.getValue().getTypWniosku()));
+                data.getValue().getRequestType()));
         typeColumn.setPrefWidth(150);
 
         // Kolumna pracownika
         TableColumn<AbsenceRequest, String> employeeColumn = new TableColumn<>("Pracownik");
         employeeColumn.setCellValueFactory(data -> {
-            Employee pracownik = data.getValue().getPracownik();
-            if (pracownik != null) {
+            Employee employee = data.getValue().getEmployee();
+            if (employee != null) {
                 return new javafx.beans.property.SimpleStringProperty(
-                        pracownik.getName() + " " + pracownik.getSurname());
+                        employee.getName() + " " + employee.getSurname());
             } else {
                 return new javafx.beans.property.SimpleStringProperty("Nieznany");
             }
@@ -248,10 +259,11 @@ public class ManagerPanelController {
         // Kolumna daty od
         TableColumn<AbsenceRequest, String> fromDateColumn = new TableColumn<>("Od");
         fromDateColumn.setCellValueFactory(data -> {
-            Date dataRozpoczecia = data.getValue().getDataRozpoczecia();
-            if (dataRozpoczecia != null) {
-                return new javafx.beans.property.SimpleStringProperty(
-                        dataRozpoczecia.toString());
+            // użyj:
+            java.util.Date utilStart = data.getValue().getStartDate();
+            if (utilStart != null) {
+                java.sql.Date sqlStart = new java.sql.Date(utilStart.getTime());
+                return new javafx.beans.property.SimpleStringProperty(sqlStart.toString());
             } else {
                 return new javafx.beans.property.SimpleStringProperty("Brak daty");
             }
@@ -261,10 +273,10 @@ public class ManagerPanelController {
         // Kolumna daty do
         TableColumn<AbsenceRequest, String> toDateColumn = new TableColumn<>("Do");
         toDateColumn.setCellValueFactory(data -> {
-            Date dataZakonczenia = data.getValue().getDataZakonczenia();
-            if (dataZakonczenia != null) {
-                return new javafx.beans.property.SimpleStringProperty(
-                        dataZakonczenia.toString());
+            java.util.Date utilEnd = data.getValue().getEndDate();
+            if (utilEnd != null) {
+                java.sql.Date sqlEnd = new java.sql.Date(utilEnd.getTime());
+                return new javafx.beans.property.SimpleStringProperty(sqlEnd.toString());
             } else {
                 return new javafx.beans.property.SimpleStringProperty("Brak daty");
             }
@@ -274,7 +286,7 @@ public class ManagerPanelController {
         // Kolumna opisu
         TableColumn<AbsenceRequest, String> descriptionColumn = new TableColumn<>("Opis");
         descriptionColumn.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
-                data.getValue().getOpis()));
+                data.getValue().getDescription()));
         descriptionColumn.setPrefWidth(200);
 
         // Dodanie kolumn do tabeli
@@ -288,7 +300,7 @@ public class ManagerPanelController {
 
         // Pobranie wszystkich wniosków
         try {
-            absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+            absenceTable.getItems().addAll(absenceRepository.getAllRequests());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Błąd",
@@ -313,20 +325,20 @@ public class ManagerPanelController {
             AbsenceRequest selectedRequest = absenceTable.getSelectionModel().getSelectedItem();
             if (selectedRequest != null) {
                 try {
-                    String currentOpis = selectedRequest.getOpis();
-                    String newOpis = (currentOpis != null && !currentOpis.isEmpty())
-                            ? currentOpis + " [ZATWIERDZONY]"
+                    String currentDescription = selectedRequest.getDescription();
+                    String newDescription = (currentDescription != null && !currentDescription.isEmpty())
+                            ? currentDescription + " [ZATWIERDZONY]"
                             : "[ZATWIERDZONY]";
-                    selectedRequest.setOpis(newOpis);
+                    selectedRequest.setDescription(newDescription);
 
                     // Aktualizacja wniosku
-                    absenceRepository.aktualizujWniosek(selectedRequest);
+                    absenceRepository.updateRequest(selectedRequest);
 
                     // Aktualizacja statusu pracownika, jeśli to urlop chorobowy
-                    if (selectedRequest.getTypWniosku().toLowerCase().contains("chorob")) {
-                        Employee pracownik = selectedRequest.getPracownik();
-                        pracownik.startSickLeave(selectedRequest.getDataRozpoczecia());
-                        userRepository.aktualizujPracownika(pracownik);
+                    if (selectedRequest.getRequestType().toLowerCase().contains("chorob")) {
+                        Employee employee = selectedRequest.getEmployee();
+                        employee.startSickLeave(selectedRequest.getStartDate());
+                        userRepository.updateEmployee(employee);
                     }
 
                     showAlert(Alert.AlertType.INFORMATION, "Sukces",
@@ -334,7 +346,7 @@ public class ManagerPanelController {
 
                     // Odświeżenie tabeli
                     absenceTable.getItems().clear();
-                    absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+                    absenceTable.getItems().addAll(absenceRepository.getAllRequests());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     showAlert(Alert.AlertType.ERROR, "Błąd",
@@ -351,19 +363,19 @@ public class ManagerPanelController {
             AbsenceRequest selectedRequest = absenceTable.getSelectionModel().getSelectedItem();
             if (selectedRequest != null) {
                 try {
-                    String currentOpis = selectedRequest.getOpis();
-                    String newOpis = (currentOpis != null && !currentOpis.isEmpty())
-                            ? currentOpis + " [ODRZUCONY]"
-                            : "[ODRZUCONY]";
-                    selectedRequest.setOpis(newOpis);
+                    String currentDescription = selectedRequest.getDescription();
+                    String newDescription = (currentDescription != null && !currentDescription.isEmpty())
+                            ? currentDescription + " [REJECTED]"
+                            : "[REJECTED]";
+                    selectedRequest.setDescription(newDescription);
 
-                    absenceRepository.aktualizujWniosek(selectedRequest);
+                    absenceRepository.updateRequest(selectedRequest);
                     showAlert(Alert.AlertType.INFORMATION, "Sukces",
                             "Wniosek został odrzucony.");
 
                     // Odświeżenie tabeli
                     absenceTable.getItems().clear();
-                    absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+                    absenceTable.getItems().addAll(absenceRepository.getAllRequests());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     showAlert(Alert.AlertType.ERROR, "Błąd",
@@ -379,7 +391,7 @@ public class ManagerPanelController {
         refreshButton.setOnAction(e -> {
             try {
                 absenceTable.getItems().clear();
-                absenceTable.getItems().addAll(absenceRepository.pobierzWszystkieWnioski());
+                absenceTable.getItems().addAll(absenceRepository.getAllRequests());
                 showAlert(Alert.AlertType.INFORMATION, "Sukces",
                         "Lista wniosków została odświeżona.");
             } catch (Exception ex) {
@@ -425,12 +437,12 @@ public class ManagerPanelController {
 
         Label taskLabel = new Label("Wybierz zadanie:");
         ComboBox<String> taskComboBox = new ComboBox<>();
-        taskRepository.pobierzWszystkieZadania()
-                .forEach(t -> taskComboBox.getItems().add(t.getNazwa()));
+        taskRepository.getAllTasks()
+                .forEach(t -> taskComboBox.getItems().add(t.getName()));
 
         Label employeeLabel = new Label("Wybierz pracownika:");
         ComboBox<String> employeeComboBox = new ComboBox<>();
-        userRepository.pobierzWszystkichPracownikow().forEach(p ->
+        userRepository.getAllEmployess().forEach(p ->
                 employeeComboBox.getItems().add(p.getName() + " " + p.getSurname())
         );
 
@@ -482,10 +494,10 @@ public class ManagerPanelController {
         layout.setAlignment(Pos.CENTER);
 
         Label nameLabel = new Label("Nazwa zadania:");
-        TextField nameField = new TextField(task.getNazwa());
+        TextField nameField = new TextField(task.getName());
 
         Label descLabel = new Label("Opis:");
-        TextArea descArea = new TextArea(task.getOpis());
+        TextArea descArea = new TextArea(task.getDescription());
         descArea.setPrefRowCount(4);
 
         Label statusLabel = new Label("Status:");
@@ -495,9 +507,9 @@ public class ManagerPanelController {
 
         Label dateLabel = new Label("Termin:");
         DatePicker deadlinePicker = new DatePicker();
-        if (task.getData() != null) {
+        if (task.getDate() != null) {
             deadlinePicker.setValue(
-                    new java.sql.Date(task.getData().getTime()).toLocalDate()
+                    new java.sql.Date(task.getDate().getTime()).toLocalDate()
             );
         }
 
@@ -509,13 +521,13 @@ public class ManagerPanelController {
 
         saveButton.setOnAction(e -> {
             try {
-                task.setNazwa(nameField.getText());
-                task.setOpis(descArea.getText());
+                task.setName(nameField.getText());
+                task.setDescription(descArea.getText());
                 task.setStatus(statusCombo.getValue());
                 if (deadlinePicker.getValue() != null) {
-                    task.setData(java.sql.Date.valueOf(deadlinePicker.getValue()));
+                    task.setDate(java.sql.Date.valueOf(deadlinePicker.getValue()));
                 }
-                taskRepository.aktualizujZadanie(task);
+                taskRepository.updateTask(task);
 
                 showAlert(Alert.AlertType.INFORMATION, "Sukces",
                         "Zadanie zaktualizowane!");
@@ -575,4 +587,3 @@ public class ManagerPanelController {
         alert.showAndWait();
     }
 }
-

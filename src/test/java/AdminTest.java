@@ -51,10 +51,10 @@ class AdminTest {
     @Test
     void testUpdateAddress() {
         Address newAddr = new Address();
-        newAddr.setMiasto("Kraków");
+        newAddr.setCity("Kraków");
 
         admin.updateAddress(newAddr);
-        assertEquals("Kraków", employee.getAdres().getMiasto());
+        assertEquals("Kraków", employee.getAddress().getCity());
     }
 
     @Test
@@ -66,14 +66,14 @@ class AdminTest {
     @Test
     void testUpdateDepartment() {
         admin.updateDepartment("HR");
-        assertEquals("HR", employee.getStanowisko());
+        assertEquals("HR", employee.getPosition());
     }
 
     @Test
     void testUpdateSalary() {
         BigDecimal newSalary = new BigDecimal("8800.50");
         admin.updateSalary(newSalary);
-        assertEquals(newSalary, employee.getZarobki());
+        assertEquals(newSalary, employee.getSalary());
     }
 
     @Test
@@ -95,7 +95,7 @@ class AdminTest {
     private Employee exampleEmployee() {
         try {
             Address addr = new Address();
-            addr.setMiasto("Poznań");
+            addr.setCity("Poznań");
 
             return new Employee(
                     "Anna", "Kowalska", 28, "anna@wp.pl",
@@ -110,7 +110,7 @@ class AdminTest {
     private Employee exampleEmployee2() {
         try {
             Address addr = new Address();
-            addr.setMiasto("Gdańsk");
+            addr.setCity("Gdańsk");
 
             return new Employee(
                     "Marek", "Nowicki", 32, "marek@wp.pl",

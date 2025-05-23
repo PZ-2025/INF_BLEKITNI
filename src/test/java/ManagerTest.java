@@ -17,7 +17,7 @@ class ManagerTest {
     @BeforeEach
     void setUp() throws Exception {
         Address address = new Address();
-        address.setMiasto("Warszawa");
+        address.setCity("Warszawa");
         employee = new Employee("Jan", "Kowalski", 35, "jan@example.com",
                 "jkowal", "bezpieczneHaslo", address, "Manager", new BigDecimal("6000"));
         manager = new Manager(employee);
@@ -79,9 +79,9 @@ class ManagerTest {
     @Test
     void testUpdateAddress() {
         Address newAddress = new Address();
-        newAddress.setMiasto("Wrocław");
+        newAddress.setCity("Wrocław");
         manager.updateAddress(newAddress);
-        assertEquals("Wrocław", manager.getEmployee().getAdres().getMiasto());
+        assertEquals("Wrocław", manager.getEmployee().getAddress().getCity());
     }
 
     @Test
@@ -93,24 +93,24 @@ class ManagerTest {
     @Test
     void testUpdateDepartment() {
         manager.updateDepartment("Logistyka");
-        assertEquals("Logistyka", manager.getEmployee().getStanowisko());
+        assertEquals("Logistyka", manager.getEmployee().getPosition());
     }
 
     @Test
     void testUpdateSalary() {
         manager.updateSalary(new BigDecimal("9000.00"));
-        assertEquals(new BigDecimal("9000.00"), manager.getEmployee().getZarobki());
+        assertEquals(new BigDecimal("9000.00"), manager.getEmployee().getSalary());
     }
 
     @Test
-    void testWygenerujRaportZespolu() {
-        manager.wygenerujRaportZespolu(); // tylko sprawdzamy, że się nie wywala, logika w konsoli
+    void testGenerateTeamReport() {
+        manager.generateTeamReport(); // tylko sprawdzamy, że się nie wywala, logika w konsoli
     }
 
     // Pomocnicza metoda
     private Employee createOtherEmployee() throws Exception {
         Address address = new Address();
-        address.setMiasto("Gdańsk");
+        address.setCity("Gdańsk");
         return new Employee("Anna", "Zielińska", 28, "anna@example.com",
                 "aziel", "haslo1234", address, "Specjalista", new BigDecimal("4800"));
     }

@@ -12,10 +12,13 @@ import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -23,6 +26,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Klasa reprezentująca graficzny interfejs kasjera.
@@ -33,13 +37,8 @@ public class CashierPanel {
     private BorderPane root;
     private Stage primaryStage;
     private CashierPanelController controller;
-    private boolean reportGenerated = false; // Flaga informująca, czy raport został wygenerowany
     private Image logoImage;
-    /**
-     * Tworzy nowy panel kasjera i wyświetla domyślny widok sprzedaży.
-     *
-     * @param primaryStage główne okno aplikacji
-     */
+
     public CashierPanel(Stage primaryStage) {
         this.primaryStage = primaryStage;
         primaryStage.setMinWidth(700);
@@ -71,22 +70,32 @@ public class CashierPanel {
         Scene scene = new Scene(root, 700, 450);
         primaryStage.setScene(scene);
 
-        // Obsługa próby zamknięcia okna
+        // Obsługa próby zamknięcia okna - używamy metod z kontrolera
         primaryStage.setOnCloseRequest(event -> {
+            // Sprawdź, czy raport został wygenerowany w bieżącej sesji lub wcześniej dzisiaj
+            boolean reportGenerated = controller.isReportGeneratedInCurrentSession() || controller.isDailyReportGeneratedToday();
+
             if (!reportGenerated) {
                 event.consume(); // Zapobiega zamknięciu okna
-                AlterBox.display("Nie można zamknąć", "Nie można zamknąć okna bez wygenerowania raportu sprzedaży.");
+
+                // Wyświetl alert z pytaniem
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Uwaga");
+                alert.setHeaderText("Nie wygenerowano raportu dziennego");
+                alert.setContentText("Czy na pewno chcesz zamknąć aplikację bez wygenerowania raportu dziennego?");
+
+                Optional<ButtonType> result = alert.showAndWait();
+                if (result.isPresent() && result.get() == ButtonType.OK) {
+                    // Użytkownik potwierdził zamknięcie - usuń handler i zamknij
+                    primaryStage.setOnCloseRequest(null);
+                    Platform.exit();
+                }
             }
         });
 
         primaryStage.show();
     }
 
-    /**
-     * Tworzy panel nawigacyjny z przyciskami po lewej stronie.
-     *
-     * @return VBox z przyciskami nawigacyjnymi
-     */
     private VBox createMenu() {
         VBox menu = new VBox(15);
         menu.setPadding(new Insets(20));
@@ -127,11 +136,8 @@ public class CashierPanel {
         // Przycisk wylogowania (czerwony)
         Button logoutButton = createStyledButton("Wyloguj się", "#E74C3C");
         logoutButton.setOnAction(e -> {
-            if (!reportGenerated) {
-                AlterBox.display("Brak raportu", "Nie można wylogować się bez wygenerowania raportu sprzedaży.");
-            } else {
-                controller.logout();
-            }
+            // Używamy flagi z kontrolera zamiast lokalnej flagi
+            controller.logout();
         });
 
         menu.getChildren().add(logo);
@@ -247,12 +253,14 @@ public class CashierPanel {
         return primaryStage;
     }
 
+    public CashierPanelController getController() {
+        return this.controller;
+    }
+
     /**
-     * Ustawia flagę informującą, że raport został wygenerowany.
-     *
-     * @param generated wartość logiczna
+     * Resetuje handler zamknięcia okna.
      */
-    public void setReportGenerated(boolean generated) {
-        this.reportGenerated = generated;
+    public void resetCloseRequestHandler() {
+        primaryStage.setOnCloseRequest(null);
     }
 }

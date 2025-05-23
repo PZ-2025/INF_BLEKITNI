@@ -1,12 +1,12 @@
 /*
  * Classname: TestTechnicalIssueRepository
- * Version information: 1.0
- * Date: 2025-05-15
+ * Version information: 1.1
+ * Date: 2025-05-22
  * Copyright notice: © BŁĘKITNI
  */
 
-package org.example.database;
-
+import org.example.database.TechnicalIssueRepository;
+import org.example.database.UserRepository;
 import org.example.sys.Employee;
 import org.example.sys.TechnicalIssue;
 
@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * Klasa testująca działanie TechnicalIssueRepository.
  */
-public class TestTechnicalIssueRepository {
+public class TechnicalIssueRepositoryTest {
 
     public static void main(String[] args) {
         TechnicalIssueRepository issueRepo = new TechnicalIssueRepository();
@@ -24,13 +24,13 @@ public class TestTechnicalIssueRepository {
 
         try {
             // Pobierz pracownika do przypisania zgłoszenia
-            List<Employee> pracownicy = userRepo.pobierzWszystkichPracownikow();
-            if (pracownicy.isEmpty()) {
+            List<Employee> employess = userRepo.getAllEmployess();
+            if (employess.isEmpty()) {
                 System.out.println("Brak pracowników w bazie. Dodaj pracownika przed testem.");
                 return;
             }
 
-            Employee employee = pracownicy.get(0); // wybierz pierwszego
+            Employee employee = employess.get(0); // wybierz pierwszego
 
             // === 1. Dodanie nowego zgłoszenia ===
             TechnicalIssue issue = new TechnicalIssue();
@@ -40,34 +40,34 @@ public class TestTechnicalIssueRepository {
             issue.setStatus("Nowe");
             issue.setEmployee(employee);
 
-            issueRepo.dodajZgloszenie(issue);
+            issueRepo.addIssue(issue);
             System.out.println(">>> Dodano zgłoszenie!");
 
             // === 2. Wyświetlenie wszystkich zgłoszeń ===
             System.out.println("\n>>> Lista zgłoszeń:");
-            wypiszZgloszenia(issueRepo.pobierzWszystkieZgloszenia());
+            writeIssues(issueRepo.getAllIssues());
 
             // === 3. Odczyt zgłoszenia po ID ===
-            TechnicalIssue znalezione = issueRepo.znajdzZgloszeniePoId(issue.getId());
+            TechnicalIssue znalezione = issueRepo.findIssueById(issue.getId());
             System.out.println("\n>>> Zgłoszenie po ID: " + znalezione);
 
             // === 4. Aktualizacja zgłoszenia ===
             issue.setStatus("W trakcie");
             issue.setDescription("Zgłoszenie przekazane do serwisu.");
-            issueRepo.aktualizujZgloszenie(issue);
+            issueRepo.updateIssue(issue);
             System.out.println(">>> Zaktualizowano zgłoszenie.");
 
             // === 5. Wyświetlenie po aktualizacji ===
             System.out.println("\n>>> Lista po aktualizacji:");
-            wypiszZgloszenia(issueRepo.pobierzWszystkieZgloszenia());
+            writeIssues(issueRepo.getAllIssues());
 
             // === 6. Usunięcie zgłoszenia ===
-            issueRepo.usunZgloszenie(issue);
+            issueRepo.removeIssue(issue);
             System.out.println(">>> Usunięto zgłoszenie.");
 
             // === 7. Lista po usunięciu ===
             System.out.println("\n>>> Lista po usunięciu:");
-            wypiszZgloszenia(issueRepo.pobierzWszystkieZgloszenia());
+            writeIssues(issueRepo.getAllIssues());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -80,13 +80,13 @@ public class TestTechnicalIssueRepository {
     /**
      * Pomocnicza metoda wypisująca zgłoszenia.
      *
-     * @param zgloszenia lista zgłoszeń
+     * @param issues lista zgłoszeń
      */
-    private static void wypiszZgloszenia(List<TechnicalIssue> zgloszenia) {
-        if (zgloszenia.isEmpty()) {
+    private static void writeIssues(List<TechnicalIssue> issues) {
+        if (issues.isEmpty()) {
             System.out.println("(Brak zgłoszeń)");
         } else {
-            for (TechnicalIssue z : zgloszenia) {
+            for (TechnicalIssue z : issues) {
                 System.out.printf("ID: %-3d Typ: %-20s Status: %-15s Data: %-10s\n",
                         z.getId(),
                         z.getType(),

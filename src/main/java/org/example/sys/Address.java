@@ -1,11 +1,3 @@
-/*
- * Classname: Address
- * Version information: 1.0
- * Date: 2025-05-16
- * Copyright notice: © BŁĘKITNI
- */
-
-
 package org.example.sys;
 
 import jakarta.persistence.*;
@@ -20,30 +12,47 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    private String miejscowosc;
-    private String numerDomu;
-    private String numerMieszkania;
-    private String kodPocztowy;
-    private String miasto;
+    @Column(name = "Miejscowosc")
+    private String town;
 
-    @OneToMany(mappedBy = "adres")
-    private List<Employee> pracownicy;
+    @Column(name = "Numer_domu")
+    private String houseNumber;
+
+    @Column(name = "Numer_mieszkania")
+    private String apartmentNumber;
+
+    @Column(name = "Kod_pocztowy")
+    private String zipCode;
+
+    @Column(name = "Miasto")
+    private String city;
+
+    @OneToMany(mappedBy = "address")
+    private List<Employee> employees;
 
     // Gettery i settery
     public int getId() { return id; }
 
-    public String getMiejscowosc() { return miejscowosc; }
-    public void setMiejscowosc(String miejscowosc) { this.miejscowosc = miejscowosc; }
+    public String getTown() { return town; }
+    public void setTown(String town) { this.town = town; }
 
-    public String getNumerDomu() { return numerDomu; }
-    public void setNumerDomu(String numerDomu) { this.numerDomu = numerDomu; }
+    public String getHouseNumber() { return houseNumber; }
+    public void setHouseNumber(String houseNumber) { this.houseNumber = houseNumber; }
 
-    public String getNumerMieszkania() { return numerMieszkania; }
-    public void setNumerMieszkania(String numerMieszkania) { this.numerMieszkania = numerMieszkania; }
+    public String getApartmentNumber() { return apartmentNumber; }
+    public void setApartmentNumber(String apartmentNumber) { this.apartmentNumber = apartmentNumber; }
 
-    public String getKodPocztowy() { return kodPocztowy; }
-    public void setKodPocztowy(String kodPocztowy) { this.kodPocztowy = kodPocztowy; }
+    public String getZipCode() { return zipCode; }
+    public void setZipCode(String zipCode) { this.zipCode = zipCode; }
 
-    public String getMiasto() { return miasto; }
-    public void setMiasto(String miasto) { this.miasto = miasto; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    @Override
+    public String toString() {
+        String apartment = (apartmentNumber != null && !apartmentNumber.isEmpty())
+                ? "/" + apartmentNumber
+                : "";
+        return town + ", ul. " + houseNumber + apartment + ", " + zipCode + " " + city;
+    }
 }

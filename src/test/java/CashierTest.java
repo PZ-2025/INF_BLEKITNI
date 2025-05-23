@@ -19,7 +19,7 @@ class CashierTest {
     @BeforeEach
     void setUp() throws Exception {
         Address address = new Address();
-        address.setMiasto("Łódź");
+        address.setCity("Łódź");
         employee = new Employee("Kamil", "Nowak", 29, "kamil@example.com",
                 "kamiln", "silneHaslo1", address, "Kasjer", new BigDecimal("4000"));
         cashier = new Cashier(employee);
@@ -46,22 +46,22 @@ class CashierTest {
     void testUpdateSalary() throws SalaryException {
         BigDecimal newSalary = new BigDecimal("4500");
         cashier.updateSalary(newSalary);
-        assertEquals(newSalary, cashier.getEmployee().getZarobki());
+        assertEquals(newSalary, cashier.getEmployee().getSalary());
     }
 
     @Test
     void testUpdateSalaryInvalid() {
         cashier.updateSalary(BigDecimal.ZERO); // nie rzuca wyjątku, tylko loguje
-        assertNotEquals(BigDecimal.ZERO, cashier.getEmployee().getZarobki());
+        assertNotEquals(BigDecimal.ZERO, cashier.getEmployee().getSalary());
     }
 
     @Test
-    void testZeskanujProdukt() {
-        assertDoesNotThrow(() -> cashier.zeskanujProdukt("Mleko 1L"));
+    void testScanProduct() {
+        assertDoesNotThrow(() -> cashier.scanProduct("Mleko 1L"));
     }
 
     @Test
-    void testZakonczTransakcje() {
-        assertDoesNotThrow(cashier::zakonczTransakcje);
+    void testEndTransaction() {
+        assertDoesNotThrow(cashier::endTransaction);
     }
 }

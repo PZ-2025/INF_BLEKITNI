@@ -20,7 +20,7 @@ class LogisticianTest {
     @BeforeEach
     void setUp() throws AgeException, PasswordException, SalaryException {
         Address address = new Address();
-        address.setMiasto("Warszawa");
+        address.setCity("Warszawa");
 
         employee = new Employee(
                 "Anna", "Kowalska", 30, "anna@example.com",
@@ -52,9 +52,9 @@ class LogisticianTest {
     @Test
     void testUpdateAddress() {
         Address newAddress = new Address();
-        newAddress.setMiasto("Kraków");
+        newAddress.setCity("Kraków");
         logistician.updateAddress(newAddress);
-        assertEquals("Kraków", employee.getAdres().getMiasto());
+        assertEquals("Kraków", employee.getAddress().getCity());
     }
 
     @Test
@@ -66,17 +66,17 @@ class LogisticianTest {
     @Test
     void testUpdateDepartment() {
         logistician.updateDepartment("Koordynator");
-        assertEquals("Koordynator", employee.getStanowisko());
+        assertEquals("Koordynator", employee.getPosition());
     }
 
     @Test
     void testUpdateSalary() {
         logistician.updateSalary(new BigDecimal("7500.00"));
-        assertEquals(new BigDecimal("7500.00"), employee.getZarobki());
+        assertEquals(new BigDecimal("7500.00"), employee.getSalary());
     }
 
     @Test
     void testAssignOrder() {
-        assertDoesNotThrow(() -> logistician.przydzielZamowienie(123));
+        assertDoesNotThrow(() -> logistician.assignOrder(123));
     }
 }

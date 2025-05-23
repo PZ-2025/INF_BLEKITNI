@@ -1,12 +1,12 @@
 /*
  * Classname: TestUserRepository
- * Version information: 1.0
- * Date: 2025-04-27
+ * Version information: 1.1
+ * Date: 2025-05-22
  * Copyright notice: © BŁĘKITNI
  */
 
-package org.example.database;
-
+import org.example.database.AddressRepository;
+import org.example.database.UserRepository;
 import org.example.sys.Address;
 import org.example.sys.Employee;
 import org.example.wyjatki.SalaryException;
@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Klasa testująca działanie UserRepository i AddressRepository.
  */
-public class TestUserRepository {
+public class UserRepositoryTest {
 
     public static void main(String[] args) {
         UserRepository userRepo = new UserRepository();
@@ -25,53 +25,53 @@ public class TestUserRepository {
 
         try {
             // === 1. Tworzenie i dodanie adresu ===
-            Address adres = new Address();
-            adres.setMiejscowosc("Testowo");
-            adres.setNumerDomu("10A");
-            adres.setNumerMieszkania("5");
-            adres.setKodPocztowy("00-000");
-            adres.setMiasto("Testowo");
+            Address address = new Address();
+            address.setTown("Testowo");
+            address.setHouseNumber("10A");
+            address.setApartmentNumber("5");
+            address.setZipCode("00-000");
+            address.setCity("Testowo");
 
-            addressRepo.dodajAdres(adres);
-            System.out.println(">>> Dodano adres: " + adres.getMiasto());
+            addressRepo.addAddress(address);
+            System.out.println(">>> Dodano address: " + address.getCity());
 
             // === 2. Dodanie nowego pracownika ===
-            Employee nowyKasjer = new Employee(
+            Employee newCashier = new Employee(
                     "Michał",
                     "Brzozowski",
                     26,
-                    adres,
+                    address,
                     "mbrzo",
                     "tajnehaslo",
                     "Kasjer",
                     new BigDecimal("3200.00")
             );
 
-            userRepo.dodajPracownika(nowyKasjer);
+            userRepo.addEmployee(newCashier);
             System.out.println(
-                    ">>> Dodano pracownika: " + nowyKasjer.getLogin()
+                    ">>> Dodano pracownika: " + newCashier.getLogin()
             );
 
             // === 3. Pobieranie kasjerów ===
             System.out.println("\n>>> Lista kasjerów po dodaniu:");
-            wypiszPracownikow(userRepo.pobierzKasjerow());
+            writeEmployees(userRepo.getCashiers());
 
             // === 4. Wyszukiwanie po loginie ===
-            Employee znalezionyPoLoginie = userRepo.znajdzPoLoginie("mbrzo");
+            Employee foundByLogin = userRepo.findByLogin("mbrzo");
             System.out.println(
                     "\n>>> Znaleziony po loginie: " +
-                            znalezionyPoLoginie.getName() + " " +
-                            znalezionyPoLoginie.getSurname()
+                            foundByLogin.getName() + " " +
+                            foundByLogin.getSurname()
             );
 
             // === 5. Wyszukiwanie po loginie i haśle ===
-            Employee znalezionyPoLoginieIHasle = userRepo
-                    .znajdzPoLoginieIHasle("mbrzo", "tajnehaslo");
-            if (znalezionyPoLoginieIHasle != null) {
+            Employee foundByLoginAndPassword = userRepo
+                    .findByLoginAndPassword("mbrzo", "tajnehaslo");
+            if (foundByLoginAndPassword != null) {
                 System.out.println(
                         ">>> Znaleziony użytkownik (login + hasło): " +
-                                znalezionyPoLoginieIHasle.getName() + " " +
-                                znalezionyPoLoginieIHasle.getSurname()
+                                foundByLoginAndPassword.getName() + " " +
+                                foundByLoginAndPassword.getSurname()
                 );
             } else {
                 System.out.println(
@@ -80,32 +80,32 @@ public class TestUserRepository {
             }
 
             // === 6. Aktualizacja pracownika ===
-            znalezionyPoLoginie.setSurname("Brzoza");
-            znalezionyPoLoginie.setZarobki(new BigDecimal("3400.00"));
-            userRepo.aktualizujPracownika(znalezionyPoLoginie);
+            foundByLogin.setSurname("Brzoza");
+            foundByLogin.setSalary(new BigDecimal("3400.00"));
+            userRepo.updateEmployee(foundByLogin);
             System.out.println(">>> Zaktualizowano nazwisko i pensję.");
 
-            Employee poAktualizacji = userRepo.znajdzPoLoginie("mbrzo");
+            Employee afterUpdate = userRepo.findByLogin("mbrzo");
             System.out.println(
-                    ">>> Po aktualizacji: " + poAktualizacji.getName() + " " +
-                            poAktualizacji.getSurname() + ", zarobki: " +
-                            poAktualizacji.getZarobki()
+                    ">>> Po aktualizacji: " + afterUpdate.getName() + " " +
+                            afterUpdate.getSurname() + ", zarobki: " +
+                            afterUpdate.getSalary()
             );
 
             // === 7. Pobieranie wszystkich pracowników ===
             System.out.println("\n>>> Lista wszystkich pracowników:");
-            wypiszPracownikow(userRepo.pobierzWszystkichPracownikow());
+            writeEmployees(userRepo.getAllEmployess());
 
             // === 8. Usuwanie pracownika ===
-            userRepo.usunPracownika(poAktualizacji);
+            userRepo.removeEmployee(afterUpdate);
             System.out.println(
                     ">>> Usunięto pracownika o id = " +
-                            poAktualizacji.getId()
+                            afterUpdate.getId()
             );
 
             // === 9. Sprawdzenie kasjerów po usunięciu ===
             System.out.println("\n>>> Lista kasjerów po usunięciu:");
-            wypiszPracownikow(userRepo.pobierzKasjerow());
+            writeEmployees(userRepo.getCashiers());
 
         } catch (SalaryException e) {
             System.err.println(
@@ -123,14 +123,14 @@ public class TestUserRepository {
     /**
      * Pomocnicza metoda wypisująca listę pracowników.
      *
-     * @param pracownicy lista pracowników do wypisania
+     * @param employees lista pracowników do wypisania
      */
-    private static void wypiszPracownikow(List<Employee> pracownicy) {
-        if (pracownicy.isEmpty()) {
+    private static void writeEmployees(List<Employee> employees) {
+        if (employees.isEmpty()) {
             System.out.println("(Brak wyników)");
             return;
         }
-        for (Employee e : pracownicy) {
+        for (Employee e : employees) {
             System.out.printf(
                     "ID: %-3d Imię: %-10s Nazwisko: %-12s Login: %-8s "
                             + "Zarobki: %8.2f zł%n",
@@ -138,7 +138,7 @@ public class TestUserRepository {
                     e.getName(),
                     e.getSurname(),
                     e.getLogin(),
-                    e.getZarobki()
+                    e.getSalary()
             );
         }
         System.out.println("-----------------------------");

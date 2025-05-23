@@ -5,7 +5,6 @@
  * Copyright notice: © BŁĘKITNI
  */
 
-
 package org.example.sys;
 
 import javax.crypto.Mac;
@@ -15,10 +14,24 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * Klasa do haszowania haseł z użyciem HMAC i SHA-256.
+ * Używa ID użytkownika jako klucza do haszowania.
+ */
 public class PasswordHasher {
 
+    // Algorytm HMAC do haszowania
     private static final String HMAC_ALGORITHM = "HmacSHA256";
 
+    /**
+     * Haszuje hasło użytkownika z użyciem HMAC i SHA-256.
+     *
+     * @param password hasło do haszowania
+     * @param userId   ID użytkownika (używane jako klucz HMAC)
+     * @return hasz hasła w formacie heksadecymalnym
+     * @throws NoSuchAlgorithmException jeśli algorytm HMAC nie jest dostępny
+     * @throws InvalidKeyException      jeśli klucz HMAC jest nieprawidłowy
+     */
     public static String hashPassword(String password, int userId)
             throws NoSuchAlgorithmException, InvalidKeyException {
 
@@ -37,6 +50,16 @@ public class PasswordHasher {
         return bytesToHex(hmacBytes);
     }
 
+    /**
+     * Weryfikuje hasło użytkownika porównując je z przechowywanym haszem.
+     *
+     * @param storedHash przechowywany hash hasła
+     * @param password   hasło do weryfikacji
+     * @param userId     ID użytkownika (używane jako klucz HMAC)
+     * @return true, jeśli hasło jest poprawne, false w przeciwnym razie
+     * @throws NoSuchAlgorithmException jeśli algorytm HMAC nie jest dostępny
+     * @throws InvalidKeyException      jeśli klucz HMAC jest nieprawidłowy
+     */
     public static boolean verifyPassword(String storedHash, String password, int userId)
             throws NoSuchAlgorithmException, InvalidKeyException {
 
@@ -49,6 +72,12 @@ public class PasswordHasher {
     }
 
     // Pomocnicza metoda do konwersji bajtów na hex
+    /**
+     * Konwertuje tablicę bajtów na string heksadecymalny.
+     *
+     * @param bytes tablica bajtów do konwersji
+     * @return string heksadecymalny
+     */
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
@@ -58,6 +87,11 @@ public class PasswordHasher {
     }
 
     // Przykład użycia
+    /**
+     * Przykład użycia klasy PasswordHasher.
+     *
+     * @param args argumenty wiersza poleceń
+     */
     public static void main(String[] args) {
         try {
             int userId = 123;

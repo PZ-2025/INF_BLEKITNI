@@ -45,3 +45,5 @@ config.properties
 
 # Ignoruj katalog z kopiami zapasowymi
 backups/
+
+reports/

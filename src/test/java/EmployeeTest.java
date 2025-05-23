@@ -18,7 +18,7 @@ class EmployeeTest {
     @Test
     void testConstructorInitialization() throws NameException, AgeException, PasswordException, SalaryException {
         Address address = new Address();
-        address.setMiasto("Warszawa");
+        address.setCity("Warszawa");
 
         Employee employee = new Employee(
                 "John", "Doe", 30, "john@example.com",
@@ -31,18 +31,18 @@ class EmployeeTest {
         assertEquals("john@example.com", employee.getEmail());
         assertEquals("jdoe", employee.getLogin());
         assertEquals("pass12345", employee.getPassword());
-        assertEquals("Manager", employee.getStanowisko());
-        assertEquals(new BigDecimal("5000.00"), employee.getZarobki());
+        assertEquals("Manager", employee.getPosition());
+        assertEquals(new BigDecimal("5000.00"), employee.getSalary());
         assertFalse(employee.isOnSickLeave());
         assertNull(employee.getSickLeaveStartDate());
-        assertEquals("Warszawa", employee.getAdres().getMiasto());
+        assertEquals("Warszawa", employee.getAddress().getCity());
     }
 
     @Test
     void testSettersAndGetters() throws PasswordException, SalaryException, AgeException, NameException {
         Employee employee = new Employee();
         Address address = new Address();
-        address.setMiasto("Lublin");
+        address.setCity("Lublin");
 
         employee.setName("Jane");
         employee.setSurname("Smith");
@@ -50,9 +50,9 @@ class EmployeeTest {
         employee.setEmail("jane@example.com");
         employee.setLogin("jsmith");
         employee.setPassword("securepass");
-        employee.setStanowisko("Developer");
-        employee.setZarobki(new BigDecimal("6000.00"));
-        employee.setAdres(address);
+        employee.setPosition("Developer");
+        employee.setSalary(new BigDecimal("6000.00"));
+        employee.setAddress(address);
 
         assertEquals("Jane", employee.getName());
         assertEquals("Smith", employee.getSurname());
@@ -60,15 +60,15 @@ class EmployeeTest {
         assertEquals("jane@example.com", employee.getEmail());
         assertEquals("jsmith", employee.getLogin());
         assertEquals("securepass", employee.getPassword());
-        assertEquals("Developer", employee.getStanowisko());
-        assertEquals(new BigDecimal("6000.00"), employee.getZarobki());
-        assertEquals("Lublin", employee.getAdres().getMiasto());
+        assertEquals("Developer", employee.getPosition());
+        assertEquals(new BigDecimal("6000.00"), employee.getSalary());
+        assertEquals("Lublin", employee.getAddress().getCity());
     }
 
     @Test
     void testStartSickLeave() throws NameException, AgeException, PasswordException, SalaryException {
         Address address = new Address();
-        address.setMiasto("Kraków");
+        address.setCity("Kraków");
 
         Employee employee = new Employee(
                 "Anna", "Nowak", 29, "anna@ex.com",
@@ -91,9 +91,9 @@ class EmployeeTest {
         assertNull(employee.getEmail());
         assertNull(employee.getLogin());
         assertNull(employee.getPassword());
-        assertNull(employee.getStanowisko());
-        assertNull(employee.getZarobki());
-        assertNull(employee.getAdres());
+        assertNull(employee.getPosition());
+        assertNull(employee.getSalary());
+        assertNull(employee.getAddress());
         assertFalse(employee.isOnSickLeave());
         assertNull(employee.getSickLeaveStartDate());
     }
@@ -101,7 +101,7 @@ class EmployeeTest {
     @Test
     void testEndSickLeave() throws NameException, AgeException, PasswordException, SalaryException {
         Address address = new Address();
-        address.setMiasto("Gdańsk");
+        address.setCity("Gdańsk");
 
         Employee employee = new Employee(
                 "Tomasz", "Lis", 45, "tomasz@abc.pl",
@@ -168,7 +168,7 @@ class EmployeeTest {
         }
 
         public void updateAddress(Employee employee,Address newAddress) {
-            employee.setAdres(newAddress);
+            employee.setAddress(newAddress);
         }
 
         public void updatePassword(Employee employee, String newPassword)throws PasswordException {
@@ -176,11 +176,11 @@ class EmployeeTest {
         }
 
         public void updateDepartment(Employee employee, String newDepartment) {
-            employee.setStanowisko(newDepartment);
+            employee.setPosition(newDepartment);
         }
 
         public void updateSalary(Employee employee, BigDecimal newSalary) throws SalaryException {
-            employee.setZarobki(newSalary);
+            employee.setSalary(newSalary);
         }
 
         public Employee getEmployee(Employee employee) {

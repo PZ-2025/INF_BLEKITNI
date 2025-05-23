@@ -1,8 +1,9 @@
-package org.example.database;
-
+import org.example.database.OrderRepository;
+import org.example.database.ProductRepository;
+import org.example.database.UserRepository;
 import org.example.sys.Order;
 import org.example.sys.Employee;
-import org.example.sys.Warehouse;
+import org.example.sys.Product;
 
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -11,54 +12,54 @@ import java.util.List;
 /**
  * Klasa testująca działanie OrderRepository.
  */
-public class TestOrderRepository {
+public class OrderRepositoryTest {
 
     public static void main(String[] args) {
         OrderRepository orderRepo = new OrderRepository();
-        WarehouseRepository productRepo = new WarehouseRepository();
+        ProductRepository productRepo = new ProductRepository(); // zamieniono z WarehouseRepository
         UserRepository userRepo = new UserRepository();
 
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
             // === 1. Dodanie produktu i pracownika testowego ===
-            Warehouse produkt = new Warehouse("Testowy produkt", new BigDecimal("5.99"), 100);
-            productRepo.dodajProdukt(produkt);
+            Product product = new Product("Testowy produkt", "Testowa kategoria", 5.99);
+            productRepo.addProduct(product);
 
-            Employee pracownik = userRepo.pobierzWszystkichPracownikow().get(0); // zakładamy, że już jest
+            Employee employee = userRepo.getAllEmployess().get(0); // zakładamy, że już jest
 
             // === 2. Dodanie nowego zamówienia ===
             Order order = new Order();
-            order.setProdukt(produkt);
-            order.setPracownik(pracownik);
-            order.setIlosc(10);
-            order.setCena(new BigDecimal("59.90"));
-            order.setData(sdf.parse("2025-05-12"));
+            order.setProduct(product);
+            order.setEmployee(employee);
+            order.setQuantity(10);
+            order.setPrice(new BigDecimal("59.90"));
+            order.setDate(sdf.parse("2025-05-12"));
 
-            orderRepo.dodajZamowienie(order);
+            orderRepo.addOrder(order);
             System.out.println(">>> Dodano zamówienie.");
 
             // === 3. Pobranie wszystkich zamówień ===
             System.out.println("\n>>> Lista wszystkich zamówień:");
-            wypiszZamowienia(orderRepo.pobierzWszystkieZamowienia());
+            writeOrders(orderRepo.getAllOrders());
 
             // === 4. Aktualizacja ===
-            order.setIlosc(20);
-            order.setCena(new BigDecimal("119.80"));
-            orderRepo.aktualizujZamowienie(order);
+            order.setQuantity(20);
+            order.setPrice(new BigDecimal("119.80"));
+            orderRepo.updateOrder(order);
             System.out.println(">>> Zaktualizowano zamówienie.");
 
             // === 5. Pobranie po ID ===
-            Order znalezione = orderRepo.znajdzZamowieniePoId(order.getId());
-            System.out.println(">>> Zamówienie po ID: " + znalezione);
+            Order found = orderRepo.findOrderById(order.getId());
+            System.out.println(">>> Zamówienie po ID: " + found);
 
             // === 6. Usunięcie ===
-            orderRepo.usunZamowienie(order.getId());
+            orderRepo.removeOrders(order.getId());
             System.out.println(">>> Usunięto zamówienie.");
 
             // === 7. Sprawdzenie listy po usunięciu ===
             System.out.println("\n>>> Lista zamówień po usunięciu:");
-            wypiszZamowienia(orderRepo.pobierzWszystkieZamowienia());
+            writeOrders(orderRepo.getAllOrders());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -69,17 +70,17 @@ public class TestOrderRepository {
         }
     }
 
-    private static void wypiszZamowienia(List<Order> zamowienia) {
-        if (zamowienia.isEmpty()) {
+    private static void writeOrders(List<Order> orders) {
+        if (orders.isEmpty()) {
             System.out.println("(Brak zamówień)");
         } else {
-            for (Order z : zamowienia) {
+            for (Order z : orders) {
                 System.out.printf("ID: %-3d | Produkt: %-20s | Ilość: %-3d | Cena: %-7.2f | Data: %s%n",
                         z.getId(),
-                        z.getProdukt().getNazwa(), // poprawiono z getName()
-                        z.getIlosc(),
-                        z.getCena(),
-                        z.getData().toString()
+                        z.getProduct().getName(), // poprawiono z getName()
+                        z.getQuantity(),
+                        z.getPrice(),
+                        z.getDate().toString()
                 );
             }
         }

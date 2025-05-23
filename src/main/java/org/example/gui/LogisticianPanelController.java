@@ -19,13 +19,17 @@ import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.example.database.ProductRepository;
-import sys.Product; //IMPORT KLASY PRODUCT Z BIBLIOTEKI , NIE Z GŁÓWNEGO PROJEKTU!
+import org.example.database.WarehouseRepository;
+import org.example.pdflib.ConfigManager;
 import pdf.WarehouseRaport;
 
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +42,7 @@ public class LogisticianPanelController {
     private final Stage primaryStage;
     private static final Logger logger = LogManager.getLogger(LogisticianPanelController.class);
     private final ProductRepository productRepository = new ProductRepository();
+    private final WarehouseRepository warehouseRepository = new WarehouseRepository();
 
     /**
      * Konstruktor przypisujący panel logistyka.
@@ -158,6 +163,7 @@ public class LogisticianPanelController {
         logisticianPanel.setCenterPane(layout);
     }
 
+    /** Okno konfiguracji raportu magazynowego (kategorie + próg stanu) */
     private void showReportDialog() {
         Stage stage = new Stage();
         stage.setTitle("Generuj raport magazynowy");
@@ -167,54 +173,42 @@ public class LogisticianPanelController {
         grid.setVgap(10);
         grid.setHgap(10);
 
-        // Elementy formularza
         Label categoriesLabel = new Label("Wybierz kategorie:");
         ListView<String> categoriesList = new ListView<>();
-
-        // Pobieranie kategorii z bazy danych
         try {
-            List<org.example.sys.Product> products = productRepository.pobierzWszystkieProdukty();
-            List<String> categories = products.stream()
-                    .map(org.example.sys.Product::getCategory)
-                    .distinct()
-                    .collect(Collectors.toList());
-
-            categoriesList.getItems().addAll(categories);
-        } catch (Exception e) {
-            logger.error("Błąd podczas pobierania kategorii", e);
-            categoriesList.getItems().addAll("Nabiał", "Pieczywo", "Napoje", "Produkty zbożowe", "Tłuszcze");
+            categoriesList.getItems().addAll(productRepository.getCategories());
+        } catch (Exception ex) {
+            logger.error("Błąd pobierania kategorii", ex);
         }
-
         categoriesList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         Label thresholdLabel = new Label("Próg niskiego stanu magazynowego:");
         Spinner<Integer> thresholdSpinner = new Spinner<>(1, 100, 5);
 
-        Label outputLabel = new Label("Ścieżka zapisu:");
-        TextField outputPath = new TextField();
-
-        Button browseButton = new Button("Przeglądaj");
-        browseButton.setOnAction(e -> handleBrowseButton(stage, outputPath));
+        // Informacja o docelowej ścieżce (tylko do odczytu)
+        Label pathInfoLabel = new Label("Plik zostanie zapisany w katalogu:");
+        TextField pathDisplay = new TextField();
+        pathDisplay.setEditable(false);
+        pathDisplay.setFocusTraversable(false);
+        pathDisplay.setPrefWidth(400);
+        pathDisplay.setText(ConfigManager.getReportPath());
 
         Button generate = new Button("Generuj");
-        generate.setOnAction(e -> {
-            List<String> selectedCategories = new ArrayList<>(categoriesList.getSelectionModel().getSelectedItems());
-            int lowStockThreshold = thresholdSpinner.getValue();
+        generate.setOnAction(e ->
+                handleGenerateButton(
+                        new ArrayList<>(categoriesList.getSelectionModel().getSelectedItems()),
+                        thresholdSpinner.getValue(),
+                        stage
+                )
+        );
 
-            handleGenerateButton(outputPath, selectedCategories, lowStockThreshold, stage);
-        });
-
-        // Rozmieszczenie elementów
         grid.add(categoriesLabel, 0, 0);
         grid.add(categoriesList, 1, 0);
         grid.add(thresholdLabel, 0, 1);
         grid.add(thresholdSpinner, 1, 1);
-        grid.add(outputLabel, 0, 2);
-        grid.add(outputPath, 1, 2);
-        grid.add(browseButton, 2, 2);
+        grid.add(pathInfoLabel, 0, 2);
+        grid.add(pathDisplay, 1, 2);
         grid.add(generate, 1, 3);
-
-        GridPane.setHgrow(outputPath, Priority.ALWAYS);
 
         stage.setScene(new Scene(grid, 600, 350));
         stage.show();
@@ -230,90 +224,63 @@ public class LogisticianPanelController {
         }
     }
 
-    private void handleGenerateButton(TextField outputPath, List<String> selectedCategories, int lowStockThreshold, Stage stage) {
-        if (outputPath.getText().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Uwaga", "Wybierz ścieżkę zapisu raportu.");
+    private void handleGenerateButton(List<String> selectedCategories,
+                                      int lowStockThreshold,
+                                      Stage stage) {
+
+        String basePath = ConfigManager.getReportPath();
+        if (basePath == null || basePath.isBlank()) {
+            showAlert(Alert.AlertType.WARNING, "Brak ścieżki",
+                    "Ustaw domyślną ścieżkę zapisu raportów w ustawieniach administratora.");
             return;
         }
 
+        // Generujemy unikalną nazwę pliku
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        File targetFile = new File(basePath, "warehouse-report-" + timestamp + ".pdf");
+
         try {
-            // Pobieranie produktów z bazy danych
-            List<org.example.sys.Product> productsFromDb = productRepository.pobierzWszystkieProdukty();
+            // Pobierz produkty z repozytorium
+            List<org.example.sys.Product> products = productRepository.getAllProducts();
 
-            // Konwersja produktów do formatu używanego przez bibliotekę raportów
-            List<sys.Product> pdfProducts = new ArrayList<>();
-            for (org.example.sys.Product product : productsFromDb) {
-                pdfProducts.add(new sys.Product(
-                        product.getName(),
-                        product.getCategory(),
-                        product.getPrice(),
-                        product.getQuantity()
-                ));
-            }
+            // Pobierz stany magazynowe
+            Map<Integer, Integer> qtyById = warehouseRepository
+                    .getAllStates()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            org.example.sys.Warehouse::getProductId,
+                            org.example.sys.Warehouse::getQuantity
+                    ));
 
-            // Generowanie raportu
-            WarehouseRaport generator = new WarehouseRaport();
-            generator.setLogoPath("src/main/resources/logo.png");
-            generator.setLowStockThreshold(lowStockThreshold);
+            // Filtruj produkty według wybranych kategorii
+            List<org.example.sys.Product> filteredProducts = products.stream()
+                    .filter(p ->
+                            selectedCategories.isEmpty() ||
+                                    selectedCategories.contains(p.getCategory()))
+                    .collect(Collectors.toList());
 
-            generator.generateReport(
-                    outputPath.getText(),
-                    pdfProducts,
-                    selectedCategories
-            );
+            WarehouseRaport.ProductDataExtractor<org.example.sys.Product> extractor =
+                    new WarehouseRaport.ProductDataExtractor<>() {
+                        public String getName(org.example.sys.Product p)     { return p.getName(); }
+                        public String getCategory(org.example.sys.Product p) { return p.getCategory(); }
+                        public double getPrice(org.example.sys.Product p)    { return p.getPrice().doubleValue(); }
+                        public int getQuantity(org.example.sys.Product p)    { return qtyById.getOrDefault(p.getId(), 0); }
+                    };
 
-            showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany pomyślnie!");
+            WarehouseRaport raport = new WarehouseRaport();
+            raport.setLogoPath("src/main/resources/logo.png");
+            raport.setLowStockThreshold(lowStockThreshold);
+            raport.generateReport(targetFile.getAbsolutePath(), filteredProducts, extractor, selectedCategories);
+
+            showAlert(Alert.AlertType.INFORMATION, "Sukces",
+                    "Raport zapisany: " + targetFile.getAbsolutePath());
             stage.close();
+
         } catch (Exception ex) {
             logger.error("Błąd generowania raportu", ex);
-            showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + ex.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Błąd",
+                    "Generowanie raportu nie powiodło się: " + ex.getMessage());
         }
-    }
-
-
-
-    private void runLibraryTest() {
-        try {
-            WarehouseRaport generator = new WarehouseRaport();
-            generator.setLogoPath("src/main/resources/logo.png");
-            generator.setLowStockThreshold(3);
-
-            String testPath = System.getProperty("user.dir") + "/test_report.pdf";
-            generator.generateReport(
-                    testPath,
-                    (List<sys.Product>) (List<?>) getSampleProducts(),
-                    Arrays.asList("Elektronika", "Żywność")
-            );
-
-            showAlert(Alert.AlertType.INFORMATION,
-                    "Test powiódł się",
-                    "Wygenerowano testowy raport:\n" + testPath);
-        } catch (Exception ex) {
-            showAlert(Alert.AlertType.ERROR,
-                    "Test nie powiódł się",
-                    "Błąd: " + ex.getMessage());
-        }
-    }
-
-    // Metody pomocnicze
-    private List<String> getAllCategories() {
-        return Arrays.asList(
-                "Elektronika",
-                "Odzież",
-                "Akcesoria",
-                "Żywność"
-        );
-    }
-
-    private List<Product> getSampleProducts() {
-        return Arrays.asList(
-                new Product("Laptop HP Pavilion", "Elektronika", 8, 3499),
-                new Product("Mysz Logitech MX", "Elektronika", 2, 299),
-                new Product("Kurtka zimowa", "Odzież", 15, 199),
-                new Product("Powerbank Xiaomi", "Akcesoria", 4, 89),
-                new Product("Kawa Arabica 1kg", "Żywność", 1, 39),
-                new Product("Słuchawki Sony", "Elektronika", 6, 599)
-        );
     }
 
     /**
@@ -392,7 +359,7 @@ public class LogisticianPanelController {
 
         // Pobieranie kategorii z bazy danych
         try {
-            List<org.example.sys.Product> products = productRepository.pobierzWszystkieProdukty();
+            List<org.example.sys.Product> products = productRepository.getAllProducts();
             List<String> categories = products.stream()
                     .map(org.example.sys.Product::getCategory)
                     .distinct()
@@ -420,7 +387,7 @@ public class LogisticianPanelController {
         filterButton.setOnAction(e -> {
             try {
                 // Pobieranie wszystkich produktów
-                List<org.example.sys.Product> allProducts = productRepository.pobierzWszystkieProdukty();
+                List<org.example.sys.Product> allProducts = productRepository.getAllProducts();
 
                 // Filtrowanie produktów
                 List<org.example.sys.Product> filteredProducts = allProducts.stream()
@@ -442,7 +409,7 @@ public class LogisticianPanelController {
                             if (!minPriceField.getText().isEmpty()) {
                                 try {
                                     double minPrice = Double.parseDouble(minPriceField.getText().replace(",", "."));
-                                    if (product.getPrice() < minPrice) {
+                                    if (product.getPrice().doubleValue() < minPrice) {   // <- .doubleValue()
                                         return false;
                                     }
                                 } catch (NumberFormatException ex) {
@@ -454,19 +421,7 @@ public class LogisticianPanelController {
                             if (!maxPriceField.getText().isEmpty()) {
                                 try {
                                     double maxPrice = Double.parseDouble(maxPriceField.getText().replace(",", "."));
-                                    if (product.getPrice() > maxPrice) {
-                                        return false;
-                                    }
-                                } catch (NumberFormatException ex) {
-                                    // Ignorowanie nieprawidłowego formatu
-                                }
-                            }
-
-                            // Filtrowanie po minimalnej ilości w magazynie
-                            if (!minStockField.getText().isEmpty()) {
-                                try {
-                                    int minStock = Integer.parseInt(minStockField.getText());
-                                    if (product.getQuantity() < minStock) {
+                                    if (product.getPrice().doubleValue() > maxPrice) {   // <- .doubleValue()
                                         return false;
                                     }
                                 } catch (NumberFormatException ex) {

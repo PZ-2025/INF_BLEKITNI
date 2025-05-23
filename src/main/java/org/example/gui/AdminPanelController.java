@@ -1,7 +1,7 @@
 /*
  * Classname: AdminPanelController
- * Version information: 1.3
- * Date: 2025-05-18
+ * Version information: 1.4
+ * Date: 2025-05-22
  * Copyright notice: © BŁĘKITNI
  */
 
@@ -15,37 +15,34 @@ import javafx.geometry.Pos;
 import javafx.scene.CacheHint;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.example.database.*;
+import org.example.database.TechnicalIssueRepository;
+import org.example.database.UserRepository;
 import org.example.pdflib.ConfigManager;
-import org.example.repository.TaskRepository;
 import org.example.sys.Employee;
 import org.example.sys.TechnicalIssue;
 import org.example.wyjatki.PasswordException;
 import org.example.wyjatki.SalaryException;
 
 import java.io.File;
-import java.sql.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 
+import org.example.database.AddressRepository;
 import org.example.sys.Address;
+import pdf.StatsRaportGenerator;
+import pdf.TaskRaportGenerator;
+import pdf.WorkloadReportGenerator;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.Scene;
-import javafx.stage.Modality;
-import java.util.ArrayList;
-
-import pdf.*; // Zakładam, że generatory raportów znajdują się w pakiecie pdf
-import sys.Product;
 
 /**
  * Kontroler odpowiedzialny za obsługę logiki
@@ -101,7 +98,7 @@ public class AdminPanelController {
                 userManagementView = task.getValue();
                 adminPanel.setCenterPane(userManagementView);
                 // Załaduj dane pracowników asynchronicznie
-                odswiezListePracownikow();
+                refreshEmployeeList();
             });
 
             task.setOnFailed(e -> {
@@ -114,7 +111,7 @@ public class AdminPanelController {
             // Jeśli widok już istnieje, po prostu go pokaż
             adminPanel.setCenterPane(userManagementView);
             // Odśwież dane
-            odswiezListePracownikow();
+            refreshEmployeeList();
         }
     }
 
@@ -166,18 +163,18 @@ public class AdminPanelController {
         TableColumn<Employee, String> emailCol = new TableColumn<>("Email");
         emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
 
-        TableColumn<Employee, String> stanowiskoCol = new TableColumn<>("Stanowisko");
-        stanowiskoCol.setCellValueFactory(new PropertyValueFactory<>("stanowisko"));
+        TableColumn<Employee, String> positionCol = new TableColumn<>("Stanowisko");
+        positionCol.setCellValueFactory(new PropertyValueFactory<>("position"));
 
-        TableColumn<Employee, BigDecimal> zarobkiCol = new TableColumn<>("Zarobki");
-        zarobkiCol.setCellValueFactory(new PropertyValueFactory<>("zarobki"));
+        TableColumn<Employee, BigDecimal> salaryCol = new TableColumn<>("Zarobki");
+        salaryCol.setCellValueFactory(new PropertyValueFactory<>("salary"));
 
         tableView.getColumns().addAll(
                 nameCol, surnameCol, ageCol,
-                loginCol, emailCol, stanowiskoCol, zarobkiCol
+                loginCol, emailCol, positionCol, salaryCol
         );
 
-        odswiezListePracownikow();
+        refreshEmployeeList();
 
         // === Przyciski ===
         HBox buttonBox = new HBox(10);
@@ -187,9 +184,9 @@ public class AdminPanelController {
         Button editUserButton = new Button("Edytuj użytkownika");
         Button deleteUserButton = new Button("Usuń użytkownika");
 
-        addUserButton.setOnAction(e -> dodajNowegoUzytkownika());
-        editUserButton.setOnAction(e -> edytujWybranegoUzytkownika());
-        deleteUserButton.setOnAction(e -> usunWybranegoUzytkownika());
+        addUserButton.setOnAction(e -> addNewUser());
+        editUserButton.setOnAction(e -> editSelectedUser());
+        deleteUserButton.setOnAction(e -> removeSelectedUser());
 
         buttonBox.getChildren().addAll(
                 addUserButton, editUserButton, deleteUserButton
@@ -216,7 +213,7 @@ public class AdminPanelController {
     /**
      * Formularz edycji wybranego użytkownika.
      */
-    private void edytujWybranegoUzytkownika() {
+    private void editSelectedUser() {
         Employee selected = tableView.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showAlert(Alert.AlertType.WARNING,
@@ -249,22 +246,22 @@ public class AdminPanelController {
         // Adres
         Label addressLabel = new Label("Adres:");
         AddressRepository addressRepository = new AddressRepository();
-        ComboBox<Address> adresComboBox = new ComboBox<>();
-        adresComboBox.getItems().addAll(addressRepository.pobierzWszystkieAdresy());
-        adresComboBox.setValue(selected.getAdres()); // ustawiamy istniejący
-        adresComboBox.setPromptText("Wybierz adres");
+        ComboBox<Address> addressComboBox = new ComboBox<>();
+        addressComboBox.getItems().addAll(addressRepository.getAllAddresses());
+        addressComboBox.setValue(selected.getAddress()); // ustawiamy istniejący
+        addressComboBox.setPromptText("Wybierz adres");
 
-        Button dodajNowyAdresBtn = new Button("Dodaj nowy adres");
-        dodajNowyAdresBtn.setOnAction(e -> otworzOknoNowegoAdresu(adresComboBox));
+        Button addNewAddressBtn = new Button("Dodaj nowy adres");
+        addNewAddressBtn.setOnAction(e -> openNewAddressWindow(addressComboBox));
 
-        ComboBox<String> stanowiskoBox = new ComboBox<>();
-        stanowiskoBox.getItems().addAll("Kasjer", "Kierownik", "Admin", "Logistyk");
-        stanowiskoBox.setValue(selected.getStanowisko());
+        ComboBox<String> positionBox = new ComboBox<>();
+        positionBox.getItems().addAll("Kasjer", "Kierownik", "Admin", "Logistyk");
+        positionBox.setValue(selected.getPosition());
 
         TextField ageField = new TextField(String.valueOf(selected.getAge()));
         ageField.setPromptText("Wiek");
 
-        TextField salaryField = new TextField(selected.getZarobki().toString());
+        TextField salaryField = new TextField(selected.getSalary().toString());
         salaryField.setPromptText("Zarobki (PLN)");
 
         Button saveButton = new Button("Zapisz zmiany");
@@ -280,8 +277,8 @@ public class AdminPanelController {
                 passwordField,
                 emailField,
                 addressLabel,
-                new HBox(10, adresComboBox, dodajNowyAdresBtn),
-                stanowiskoBox,
+                new HBox(10, addressComboBox, addNewAddressBtn),
+                positionBox,
                 ageField,
                 salaryField,
                 buttons
@@ -295,8 +292,8 @@ public class AdminPanelController {
                         || surnameField.getText().isEmpty()
                         || loginField.getText().isEmpty()
                         || emailField.getText().isEmpty()
-                        || adresComboBox.getValue() == null
-                        || stanowiskoBox.getValue() == null
+                        || addressComboBox.getValue() == null
+                        || positionBox.getValue() == null
                         || ageField.getText().isEmpty()
                         || salaryField.getText().isEmpty()) {
 
@@ -312,18 +309,18 @@ public class AdminPanelController {
                 selected.setSurname(surnameField.getText());
                 selected.setLogin(loginField.getText());
                 selected.setEmail(emailField.getText());
-                selected.setAdres(adresComboBox.getValue());
+                selected.setAddress(addressComboBox.getValue());
                 if (!passwordField.getText().isEmpty()) {
                     selected.setPassword(passwordField.getText());
                 }
-                selected.setStanowisko(stanowiskoBox.getValue());
+                selected.setPosition(positionBox.getValue());
                 selected.setAge(Integer.parseInt(ageField.getText()));
-                selected.setZarobki(new BigDecimal(salaryField.getText()));
+                selected.setSalary(new BigDecimal(salaryField.getText()));
 
                 Task<Void> updateTask = new Task<>() {
                     @Override
                     protected Void call() throws Exception {
-                        userRepository.aktualizujPracownika(selected);
+                        userRepository.updateEmployee(selected);
                         return null;
                     }
                 };
@@ -371,11 +368,11 @@ public class AdminPanelController {
     /**
      * Pobiera dane z bazy i ładuje do tabeli asynchronicznie.
      */
-    private void odswiezListePracownikow() {
+    private void refreshEmployeeList() {
         Task<List<Employee>> task = new Task<>() {
             @Override
             protected List<Employee> call() throws Exception {
-                return userRepository.pobierzWszystkichPracownikow();
+                return userRepository.getAllEmployess();
             }
         };
 
@@ -399,7 +396,7 @@ public class AdminPanelController {
     /**
      * Formularz dodawania nowego użytkownika.
      */
-    private void dodajNowegoUzytkownika() {
+    private void addNewUser() {
         VBox formLayout = new VBox(10);
         formLayout.setPadding(new Insets(20));
 
@@ -424,16 +421,16 @@ public class AdminPanelController {
         // Adres
         Label addressLabel = new Label("Adres:");
         AddressRepository addressRepository = new AddressRepository();
-        ComboBox<Address> adresComboBox = new ComboBox<>();
-        adresComboBox.getItems().addAll(addressRepository.pobierzWszystkieAdresy());
-        adresComboBox.setPromptText("Wybierz istniejący adres");
+        ComboBox<Address> addressComboBox = new ComboBox<>();
+        addressComboBox.getItems().addAll(addressRepository.getAllAddresses());
+        addressComboBox.setPromptText("Wybierz istniejący adres");
 
-        Button dodajNowyAdresBtn = new Button("Dodaj nowy adres");
-        dodajNowyAdresBtn.setOnAction(e -> otworzOknoNowegoAdresu(adresComboBox));
+        Button addNewAddressBtn = new Button("Dodaj nowy adres");
+        addNewAddressBtn.setOnAction(e -> openNewAddressWindow(addressComboBox));
 
-        ComboBox<String> stanowiskoBox = new ComboBox<>();
-        stanowiskoBox.getItems().addAll("Kasjer", "Kierownik", "Admin", "Logistyk");
-        stanowiskoBox.setPromptText("Stanowisko");
+        ComboBox<String> positionComboBox = new ComboBox<>();
+        positionComboBox.getItems().addAll("Kasjer", "Kierownik", "Admin", "Logistyk");
+        positionComboBox.setPromptText("Stanowisko");
 
         TextField ageField = new TextField();
         ageField.setPromptText("Wiek");
@@ -456,8 +453,8 @@ public class AdminPanelController {
                 passwordField,
                 emailField,
                 addressLabel,
-                new HBox(10, adresComboBox, dodajNowyAdresBtn),
-                stanowiskoBox,
+                new HBox(10, addressComboBox, addNewAddressBtn),
+                positionComboBox,
                 ageField,
                 salaryField,
                 buttons
@@ -473,8 +470,8 @@ public class AdminPanelController {
                         || loginField.getText().isEmpty()
                         || passwordField.getText().isEmpty()
                         || emailField.getText().isEmpty()
-                        || adresComboBox.getValue() == null
-                        || stanowiskoBox.getValue() == null
+                        || addressComboBox.getValue() == null
+                        || positionComboBox.getValue() == null
                         || ageField.getText().isEmpty()
                         || salaryField.getText().isEmpty()) {
 
@@ -482,24 +479,24 @@ public class AdminPanelController {
                     return;
                 }
 
-                int wiek = Integer.parseInt(ageField.getText());
-                BigDecimal zarobki = new BigDecimal(salaryField.getText());
+                int age = Integer.parseInt(ageField.getText());
+                BigDecimal salary = new BigDecimal(salaryField.getText());
 
-                Employee nowy = new Employee();
-                nowy.setName(nameField.getText());
-                nowy.setSurname(surnameField.getText());
-                nowy.setLogin(loginField.getText());
-                nowy.setPassword(passwordField.getText());
-                nowy.setEmail(emailField.getText());
-                nowy.setAdres(adresComboBox.getValue());
-                nowy.setStanowisko(stanowiskoBox.getValue());
-                nowy.setAge(wiek);
-                nowy.setZarobki(zarobki);
+                Employee newEmployee = new Employee();
+                newEmployee.setName(nameField.getText());
+                newEmployee.setSurname(surnameField.getText());
+                newEmployee.setLogin(loginField.getText());
+                newEmployee.setPassword(passwordField.getText());
+                newEmployee.setEmail(emailField.getText());
+                newEmployee.setAddress(addressComboBox.getValue());
+                newEmployee.setPosition(positionComboBox.getValue());
+                newEmployee.setAge(age);
+                newEmployee.setSalary(salary);
 
                 Task<Void> addTask = new Task<>() {
                     @Override
                     protected Void call() throws Exception {
-                        userRepository.dodajPracownika(nowy);
+                        userRepository.addEmployee(newEmployee);
                         return null;
                     }
                 };
@@ -542,7 +539,7 @@ public class AdminPanelController {
      * Zabezpiecza przed usunięciem użytkownika z rolą "root".
      * Usuwa zaznaczonego użytkownika (soft-delete) i odświeża tabelę.
      */
-    private void usunWybranegoUzytkownika() {
+    private void removeSelectedUser() {
         Employee selected = tableView.getSelectionModel().getSelectedItem();
 
         if (selected == null) {
@@ -562,8 +559,8 @@ public class AdminPanelController {
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
-                    userRepository.usunPracownika(selected);
-                    odswiezListePracownikow(); // ponowne załadowanie aktywnych
+                    userRepository.removeEmployee(selected);
+                    refreshEmployeeList(); // ponowne załadowanie aktywnych
                     showAlert(
                             Alert.AlertType.INFORMATION,
                             "Sukces",
@@ -720,10 +717,11 @@ public class AdminPanelController {
      * Wyświetla panel generowania raportów.
      */
     public void showReportsPanel() {
-        ReportsPanel panel = new ReportsPanel();
-        adminPanel.setCenterPane(panel);
+        if (reportsPanelView == null) {
+            reportsPanelView = createReportsPanelView();
+        }
+        adminPanel.setCenterPane(reportsPanelView);
     }
-
 
     /**
      * Buduje (synchronnie) widok panelu raportów.
@@ -732,49 +730,178 @@ public class AdminPanelController {
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
 
-        Label titleLabel = new Label("Wybierz rodzaj raportu");
+        Label titleLabel = new Label("Generowanie raportów");
+        titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
-        ComboBox<String> reportType = new ComboBox<>();
-        reportType.getItems().addAll(
-                "Raport sprzedaży",
-                "Raport pracowników",
-                "Raport zgłoszeń"
-        );
-        reportType.setPrefWidth(200);
+        Button statsBtn = new Button("Raport KPI (Statystyki)");
+        Button taskBtn  = new Button("Raport zadań");
+        Button loadBtn  = new Button("Raport obciążenia");
 
-        Label dateLabel = new Label("Wybierz zakres dat");
-        DatePicker startDatePicker = new DatePicker();
-        startDatePicker.setPromptText("Data początkowa");
+        statsBtn.setOnAction(e -> showStatsReportDialog());
+        taskBtn.setOnAction(e  -> showTaskReportDialog());
+        loadBtn.setOnAction(e  -> showWorkloadReportDialog());
 
-        DatePicker endDatePicker = new DatePicker();
-        endDatePicker.setPromptText("Data końcowa");
-
-        Button generateButton = new Button("Generuj raport");
-        generateButton.setStyle("-fx-background-color: #3498DB; -fx-text-fill: white;");
-        generateButton.setOnAction(e -> {
-            String selected = reportType.getValue();
-            LocalDate from  = startDatePicker.getValue();
-            LocalDate to    = endDatePicker.getValue();
-
-            if (selected == null || from == null || to == null) {
-                showAlert(Alert.AlertType.WARNING, "Brak danych",
-                        "Wybierz typ raportu oraz zakres dat.");
-                return;
-            }
-            showFilterDialogForReport(selected, from, to);
-        });
-
-        layout.getChildren().addAll(
-                titleLabel,
-                reportType,
-                dateLabel,
-                startDatePicker,
-                endDatePicker,
-                generateButton
-        );
-
+        layout.getChildren().addAll(titleLabel, statsBtn, taskBtn, loadBtn);
         return layout;
     }
+
+    private void showStatsReportDialog() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Raport KPI – filtry");
+
+        // Zakres dat
+        DatePicker start = new DatePicker();
+        DatePicker end   = new DatePicker();
+
+        // Lista stanowisk – multi‑select
+        ListView<String> positionsList = new ListView<>();
+        positionsList.setPrefSize(200, 100);
+        positionsList.getItems().addAll("Kasjer", "Logistyk", "Pracownik");
+        positionsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        // Lista priorytetów
+        ListView<StatsRaportGenerator.Priority> prioList = new ListView<>();
+        prioList.setPrefSize(200, 100);
+        prioList.getItems().addAll(StatsRaportGenerator.Priority.values());
+        prioList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.addRow(0, new Label("Data od:"), start, new Label("Data do:"), end);
+        grid.addRow(1, new Label("Stanowiska:"), positionsList);
+        grid.addRow(2, new Label("Priorytety:"), prioList);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                generateStatsPDF(start.getValue(), end.getValue(),
+                        new ArrayList<>(positionsList.getSelectionModel().getSelectedItems()),
+                        new ArrayList<>(prioList.getSelectionModel().getSelectedItems()));
+            }
+            return null;
+        });
+        dialog.showAndWait();
+    }
+
+    private void generateStatsPDF(LocalDate from, LocalDate to,
+                                  List<String> positions,
+                                  List<StatsRaportGenerator.Priority> priors) {
+        try {
+            StatsRaportGenerator gen = new StatsRaportGenerator();
+            gen.setTaskData(fetchTaskStatsData(from, to)); // TODO: zaimplementuj
+            String out = ConfigManager.getReportPath() + "/stats-" + System.currentTimeMillis() + ".pdf";
+            gen.generateReport(out, to, StatsRaportGenerator.PeriodType.DAILY, positions, priors);
+            showAlert(Alert.AlertType.INFORMATION, "Raport wygenerowany", out);
+        } catch (Exception ex) {
+            showAlert(Alert.AlertType.ERROR, "Błąd", ex.getMessage());
+        }
+    }
+
+    private void showTaskReportDialog() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Raport zadań – filtry");
+
+        // Okres (ComboBox)
+        ComboBox<TaskRaportGenerator.PeriodType> period = new ComboBox<>();
+        period.getItems().addAll(TaskRaportGenerator.PeriodType.values());
+
+        // Statusy
+        ListView<String> statusList = new ListView<>();
+        statusList.setPrefSize(200, 100);
+        statusList.getItems().addAll("Zakończone", "W trakcie", "Opóźnione");
+        statusList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        GridPane g = new GridPane();
+        g.setHgap(10); g.setVgap(10);
+        g.addRow(0, new Label("Okres:"), period);
+        g.addRow(1, new Label("Statusy:"), statusList);
+
+        dialog.getDialogPane().setContent(g);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                generateTaskPDF(period.getValue(),
+                        new ArrayList<>(statusList.getSelectionModel().getSelectedItems()));
+            }
+            return null;
+        });
+        dialog.showAndWait();
+    }
+
+    private void generateTaskPDF(TaskRaportGenerator.PeriodType period,
+                                 List<String> statuses) {
+        try {
+            TaskRaportGenerator gen = new TaskRaportGenerator();
+            gen.setTaskData(fetchTaskSimpleData(period)); // TODO: zaimplementuj
+            String out = ConfigManager.getReportPath() + "/tasks-" + System.currentTimeMillis() + ".pdf";
+            gen.generateReport(out, period, statuses);
+            showAlert(Alert.AlertType.INFORMATION, "Raport wygenerowany", out);
+        } catch (Exception ex) {
+            showAlert(Alert.AlertType.ERROR, "Błąd", ex.getMessage());
+        }
+    }
+
+    private void showWorkloadReportDialog() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Raport obciążenia – filtry");
+
+        DatePicker start = new DatePicker();
+        DatePicker end   = new DatePicker();
+
+        ListView<String> positionsList = new ListView<>();
+        positionsList.setPrefSize(200, 100);
+        positionsList.getItems().addAll("Kasjer", "Logistyk", "Pracownik");
+        positionsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        ListView<String> statusList = new ListView<>();
+        statusList.setPrefSize(200, 100);
+        statusList.getItems().addAll("Przeciążenie", "Niedociążenie", "Optymalne");
+        statusList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        GridPane g = new GridPane();
+        g.setHgap(10); g.setVgap(10);
+        g.addRow(0, new Label("Data od:"), start, new Label("Data do:"), end);
+        g.addRow(1, new Label("Stanowiska:"), positionsList);
+        g.addRow(2, new Label("Statusy:"), statusList);
+
+        dialog.getDialogPane().setContent(g);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                generateWorkloadPDF(start.getValue(), end.getValue(),
+                        new ArrayList<>(positionsList.getSelectionModel().getSelectedItems()),
+                        new ArrayList<>(statusList.getSelectionModel().getSelectedItems()));
+            }
+            return null;
+        });
+        dialog.showAndWait();
+    }
+
+    private void generateWorkloadPDF(LocalDate from, LocalDate to,
+                                     List<String> positions,
+                                     List<String> statuses) {
+        try {
+            WorkloadReportGenerator gen = new WorkloadReportGenerator();
+            gen.setWorkloadData(fetchWorkloadData(from, to)); // TODO: zaimplementuj
+            String out = ConfigManager.getReportPath() + "/workload-" + System.currentTimeMillis() + ".pdf";
+            gen.generateReport(out, from, to, positions, statuses);
+            showAlert(Alert.AlertType.INFORMATION, "Raport wygenerowany", out);
+        } catch (Exception ex) {
+            showAlert(Alert.AlertType.ERROR, "Błąd", ex.getMessage());
+        }
+    }
+
+
+    //TODO: TO JEST DO ZAIMPLEMENTOWANIA
+    // Poniższe metody musisz uzupełnić, by zwracały odpowiednie dane z repozytoriów.
+    private List<StatsRaportGenerator.TaskRecord> fetchTaskStatsData(LocalDate from, LocalDate to) { return List.of(); }
+    private List<TaskRaportGenerator.TaskRecord>  fetchTaskSimpleData(TaskRaportGenerator.PeriodType p) { return List.of(); }
+    private List<WorkloadReportGenerator.EmployeeWorkload> fetchWorkloadData(LocalDate from, LocalDate to) { return List.of(); }
+
 
 
     /**
@@ -867,7 +994,7 @@ public class AdminPanelController {
                         issue.setStatus(cb.getValue());
                         executor.execute(new Task<>() {
                             @Override protected Void call() {
-                                technicalIssueRepository.aktualizujZgloszenie(issue);
+                                technicalIssueRepository.updateIssue(issue);
                                 return null;
                             }
                         });
@@ -908,7 +1035,7 @@ public class AdminPanelController {
     private void refreshIssuesTable(TableView<TechnicalIssue> tbl) {
         Task<List<TechnicalIssue>> task = new Task<>() {
             @Override protected List<TechnicalIssue> call() {
-                return technicalIssueRepository.pobierzWszystkieZgloszenia();
+                return technicalIssueRepository.getAllIssues();
             }
         };
         task.setOnSucceeded(e -> {
@@ -1069,423 +1196,71 @@ public class AdminPanelController {
         });
     }
 
-    private void otworzOknoNowegoAdresu(ComboBox<Address> adresComboBox) {
+    private void openNewAddressWindow(ComboBox<Address> addressComboBox) {
         Stage stage = new Stage();
         stage.setTitle("Dodaj nowy adres");
         VBox layout = new VBox(10);
         layout.setPadding(new Insets(20));
 
-        TextField miejscowosc = new TextField();
-        miejscowosc.setPromptText("Miejscowość");
+        TextField town = new TextField();
+        town.setPromptText("Miejscowość");
 
-        TextField numerDomu = new TextField();
-        numerDomu.setPromptText("Numer domu");
+        TextField houseNumber = new TextField();
+        houseNumber.setPromptText("Numer domu");
 
-        TextField numerMieszkania = new TextField();
-        numerMieszkania.setPromptText("Numer mieszkania (opcjonalnie)");
+        TextField apartmentNumber = new TextField();
+        apartmentNumber.setPromptText("Numer mieszkania (opcjonalnie)");
 
-        TextField kodPocztowy = new TextField();
-        kodPocztowy.setPromptText("Kod pocztowy");
+        TextField zipCode = new TextField();
+        zipCode.setPromptText("Kod pocztowy");
 
-        TextField miasto = new TextField();
-        miasto.setPromptText("Miasto");
+        TextField city = new TextField();
+        city.setPromptText("Miasto");
 
-        Button zapiszBtn = new Button("Zapisz adres");
+        Button saveButton = new Button("Zapisz adres");
 
-        zapiszBtn.setOnAction(e -> {
+        saveButton.setOnAction(e -> {
             // WALIDACJA
-            if (miejscowosc.getText().isEmpty()
-                    || numerDomu.getText().isEmpty()
-                    || kodPocztowy.getText().isEmpty()
-                    || miasto.getText().isEmpty()) {
+            if (town.getText().isEmpty()
+                    || houseNumber.getText().isEmpty()
+                    || zipCode.getText().isEmpty()
+                    || city.getText().isEmpty()) {
                 showAlert(Alert.AlertType.ERROR, "Błąd", "Wszystkie pola (poza numerem mieszkania) muszą być wypełnione.");
                 return;
             }
 
-            if (!kodPocztowy.getText().matches("\\d{2}-\\d{3}")) {
+            if (!zipCode.getText().matches("\\d{2}-\\d{3}")) {
                 showAlert(Alert.AlertType.ERROR, "Błąd", "Nieprawidłowy format kodu pocztowego. Poprawny to np. 00-001.");
                 return;
             }
 
             // ZAPIS
             AddressRepository repo = new AddressRepository();
-            Address nowy = new Address();
-            nowy.setMiejscowosc(miejscowosc.getText());
-            nowy.setNumerDomu(numerDomu.getText());
-            nowy.setNumerMieszkania(numerMieszkania.getText().isEmpty() ? null : numerMieszkania.getText());
-            nowy.setKodPocztowy(kodPocztowy.getText());
-            nowy.setMiasto(miasto.getText());
+            Address newAddress = new Address();
+            newAddress.setTown(town.getText());
+            newAddress.setHouseNumber(houseNumber.getText());
+            newAddress.setApartmentNumber(apartmentNumber.getText().isEmpty() ? null : apartmentNumber.getText());
+            newAddress.setZipCode(zipCode.getText());
+            newAddress.setCity(city.getText());
 
-            repo.dodajAdres(nowy);
+            repo.addAddress(newAddress);
 
-            // Odśwież listę i wybierz nowy adres
-            adresComboBox.getItems().clear();
-            adresComboBox.getItems().addAll(repo.pobierzWszystkieAdresy());
-            adresComboBox.setValue(nowy);
+            // Odśwież listę i wybierz newAddress adres
+            addressComboBox.getItems().clear();
+            addressComboBox.getItems().addAll(repo.getAllAddresses());
+            addressComboBox.setValue(newAddress);
 
             stage.close();
         });
 
         layout.getChildren().addAll(
                 new Label("Nowy adres:"),
-                miejscowosc, numerDomu, numerMieszkania,
-                kodPocztowy, miasto, zapiszBtn
+                town, houseNumber, apartmentNumber,
+                zipCode, city, saveButton
         );
 
         stage.setScene(new javafx.scene.Scene(layout));
         stage.show();
-    }
-    // Metoda wywoływana po kliknięciu "Raporty"
-    public void onGenerateReportsClicked() {
-        Stage reportStage = new Stage();
-        reportStage.initModality(Modality.APPLICATION_MODAL);
-        reportStage.setTitle("Generowanie raportów");
-
-        TabPane tabPane = new TabPane();
-
-        // Dodanie zakładek dla każdego typu raportu
-        tabPane.getTabs().add(createWorkloadTab());
-        tabPane.getTabs().add(createWarehouseTab());
-        tabPane.getTabs().add(createTaskTab());
-        tabPane.getTabs().add(createStatsTab());
-        tabPane.getTabs().add(createSalesTab());
-
-        Scene scene = new Scene(tabPane, 600, 400);
-        reportStage.setScene(scene);
-        reportStage.show();
-    }
-
-    // Zakładka dla raportu obciążenia
-    private Tab createWorkloadTab() {
-        Tab tab = new Tab("Obciążenie");
-        tab.setClosable(false);
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(10));
-
-        Label startDateLabel = new Label("Data początkowa:");
-        DatePicker startDatePicker = new DatePicker(LocalDate.now().minusWeeks(1));
-
-        Label endDateLabel = new Label("Data końcowa:");
-        DatePicker endDatePicker = new DatePicker(LocalDate.now());
-
-        Label positionsLabel = new Label("Stanowiska:");
-        ListView<String> positionsListView = new ListView<>();
-        positionsListView.getItems().addAll(getAllPositions());
-        positionsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Label statusesLabel = new Label("Statusy (opcjonalne):");
-        ListView<String> statusesListView = new ListView<>();
-        statusesListView.getItems().addAll("Przeciążenie", "Niedociążenie", "Optymalne");
-        statusesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Button generateButton = new Button("Generuj");
-        generateButton.setOnAction(e -> generateWorkloadReport(
-                startDatePicker.getValue(),
-                endDatePicker.getValue(),
-                positionsListView.getSelectionModel().getSelectedItems(),
-                statusesListView.getSelectionModel().getSelectedItems()
-        ));
-
-        box.getChildren().addAll(
-                startDateLabel, startDatePicker,
-                endDateLabel, endDatePicker,
-                positionsLabel, positionsListView,
-                statusesLabel, statusesListView,
-                generateButton
-        );
-        tab.setContent(box);
-        return tab;
-    }
-
-    private void generateWorkloadReport(LocalDate startDate, LocalDate endDate,
-                                        List<String> selectedPositions, List<String> selectedStatuses) {
-        if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
-            showAlert(Alert.AlertType.ERROR, "Błąd", "Nieprawidłowy zakres dat.");
-            return;
-        }
-
-        String outputPath = ConfigManager.getReportPath() + "/WorkloadReport_" + LocalDate.now() + ".pdf";
-        ensureDirectoryExists(ConfigManager.getReportPath());
-
-        WorkloadReportGenerator generator = new WorkloadReportGenerator();
-        generator.setWorkloadData(getWorkloadData());
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                generator.generateReport(outputPath, startDate, endDate, selectedPositions, selectedStatuses);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
-        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
-        executor.execute(task);
-    }
-
-    // Zakładka dla raportu magazynu
-    private Tab createWarehouseTab() {
-        Tab tab = new Tab("Magazyn");
-        tab.setClosable(false);
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(10));
-
-        Label categoriesLabel = new Label("Kategorie:");
-        ListView<String> categoriesListView = new ListView<>();
-        categoriesListView.getItems().addAll(getAllCategories());
-        categoriesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Button generateButton = new Button("Generuj");
-        generateButton.setOnAction(e -> generateWarehouseReport(
-                categoriesListView.getSelectionModel().getSelectedItems()
-        ));
-
-        box.getChildren().addAll(categoriesLabel, categoriesListView, generateButton);
-        tab.setContent(box);
-        return tab;
-    }
-
-    private void generateWarehouseReport(List<String> selectedCategories) {
-        String outputPath = ConfigManager.getReportPath() + "/WarehouseReport_" + LocalDate.now() + ".pdf";
-        ensureDirectoryExists(ConfigManager.getReportPath());
-
-        WarehouseRaport generator = new WarehouseRaport();
-        List<Product> products = getProducts();
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                generator.generateReport(outputPath, products, selectedCategories);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
-        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
-        executor.execute(task);
-    }
-
-    // Zakładka dla raportu zadań
-    private Tab createTaskTab() {
-        Tab tab = new Tab("Zadania");
-        tab.setClosable(false);
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(10));
-
-        Label periodLabel = new Label("Okres:");
-        ComboBox<TaskRaportGenerator.PeriodType> periodComboBox = new ComboBox<>();
-        periodComboBox.getItems().addAll(TaskRaportGenerator.PeriodType.values());
-        periodComboBox.setValue(TaskRaportGenerator.PeriodType.LAST_WEEK);
-
-        Label statusesLabel = new Label("Statusy:");
-        ListView<String> statusesListView = new ListView<>();
-        statusesListView.getItems().addAll("Zakończone", "W trakcie", "Opóźnione");
-        statusesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Button generateButton = new Button("Generuj");
-        generateButton.setOnAction(e -> generateTaskReport(
-                periodComboBox.getValue(),
-                statusesListView.getSelectionModel().getSelectedItems()
-        ));
-
-        box.getChildren().addAll(periodLabel, periodComboBox, statusesLabel, statusesListView, generateButton);
-        tab.setContent(box);
-        return tab;
-    }
-
-    private void generateTaskReport(TaskRaportGenerator.PeriodType periodType, List<String> selectedStatuses) {
-        String outputPath = ConfigManager.getReportPath() + "/TaskReport_" + LocalDate.now() + ".pdf";
-        ensureDirectoryExists(ConfigManager.getReportPath());
-
-        TaskRaportGenerator generator = new TaskRaportGenerator();
-        generator.setTaskData(getTaskData());
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                generator.generateReport(outputPath, periodType, selectedStatuses);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
-        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
-        executor.execute(task);
-    }
-
-    // Zakładka dla raportu statystyk
-    private Tab createStatsTab() {
-        Tab tab = new Tab("Statystyki");
-        tab.setClosable(false);
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(10));
-
-        Label dateLabel = new Label("Data raportu:");
-        DatePicker datePicker = new DatePicker(LocalDate.now());
-
-        Label periodLabel = new Label("Okres:");
-        ComboBox<StatsRaportGenerator.PeriodType> periodComboBox = new ComboBox<>();
-        periodComboBox.getItems().addAll(StatsRaportGenerator.PeriodType.values());
-        periodComboBox.setValue(StatsRaportGenerator.PeriodType.WEEKLY);
-
-        Label positionsLabel = new Label("Stanowiska:");
-        ListView<String> positionsListView = new ListView<>();
-        positionsListView.getItems().addAll(getAllPositions());
-        positionsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Label prioritiesLabel = new Label("Priorytety:");
-        ListView<StatsRaportGenerator.Priority> prioritiesListView = new ListView<>();
-        prioritiesListView.getItems().addAll(StatsRaportGenerator.Priority.values());
-        prioritiesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Button generateButton = new Button("Generuj");
-        generateButton.setOnAction(e -> generateStatsReport(
-                datePicker.getValue(),
-                periodComboBox.getValue(),
-                positionsListView.getSelectionModel().getSelectedItems(),
-                prioritiesListView.getSelectionModel().getSelectedItems()
-        ));
-
-        box.getChildren().addAll(
-                dateLabel, datePicker,
-                periodLabel, periodComboBox,
-                positionsLabel, positionsListView,
-                prioritiesLabel, prioritiesListView,
-                generateButton
-        );
-        tab.setContent(box);
-        return tab;
-    }
-
-    private void generateStatsReport(LocalDate reportDate, StatsRaportGenerator.PeriodType periodType,
-                                     List<String> selectedPositions, List<StatsRaportGenerator.Priority> selectedPriorities) {
-        if (reportDate == null) {
-            showAlert(Alert.AlertType.ERROR, "Błąd", "Brak daty raportu.");
-            return;
-        }
-
-        String outputPath = ConfigManager.getReportPath() + "/StatsReport_" + LocalDate.now() + ".pdf";
-        ensureDirectoryExists(ConfigManager.getReportPath());
-
-        StatsRaportGenerator generator = new StatsRaportGenerator();
-        generator.setTaskData(getTaskData());
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                generator.generateReport(outputPath, reportDate, periodType, selectedPositions, selectedPriorities);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
-        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
-        executor.execute(task);
-    }
-
-    // Zakładka dla raportu sprzedaży
-    private Tab createSalesTab() {
-        Tab tab = new Tab("Sprzedaż");
-        tab.setClosable(false);
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(10));
-
-        Label periodLabel = new Label("Okres:");
-        ComboBox<SalesReportGenerator.PeriodType> periodComboBox = new ComboBox<>();
-        periodComboBox.getItems().addAll(SalesReportGenerator.PeriodType.values());
-        periodComboBox.setValue(SalesReportGenerator.PeriodType.MONTHLY);
-
-        Label categoriesLabel = new Label("Kategorie:");
-        ListView<String> categoriesListView = new ListView<>();
-        categoriesListView.getItems().addAll(getAllCategories());
-        categoriesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        Button generateButton = new Button("Generuj");
-        generateButton.setOnAction(e -> generateSalesReport(
-                periodComboBox.getValue(),
-                categoriesListView.getSelectionModel().getSelectedItems()
-        ));
-
-        box.getChildren().addAll(periodLabel, periodComboBox, categoriesLabel, categoriesListView, generateButton);
-        tab.setContent(box);
-        return tab;
-    }
-
-    private void generateSalesReport(SalesReportGenerator.PeriodType periodType, List<String> selectedCategories) {
-        String outputPath = ConfigManager.getReportPath() + "/SalesReport_" + LocalDate.now() + ".pdf";
-        ensureDirectoryExists(ConfigManager.getReportPath());
-
-        SalesReportGenerator generator = new SalesReportGenerator();
-        generator.setSalesData(getSalesData());
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                generator.generateReport(outputPath, periodType, selectedCategories);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> showAlert(Alert.AlertType.INFORMATION, "Sukces", "Raport wygenerowany: " + outputPath));
-        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Błąd", "Błąd generowania raportu: " + task.getException().getMessage()));
-        executor.execute(task);
-    }
-
-    // Pomocnicza metoda do tworzenia katalogu
-    private void ensureDirectoryExists(String dirPath) {
-        File dir = new File(dirPath);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-    }
-
-    private List<WorkloadReportGenerator.EmployeeWorkload> getWorkloadData() {
-        WorkloadRepository repo = new WorkloadRepository();
-        return repo.getAllWorkloadRecords();
-    }
-
-    private List<Product> getProducts() {
-        ProductRepository repo = new ProductRepository();
-        return repo.getAllProducts();
-    }
-
-    private List<TaskRaportGenerator.TaskRecord> getTaskData() {
-        TaskRepository repo = new TaskRepository();
-        return repo.getAllTasks();
-    }
-
-    private List<SalesReportGenerator.SalesRecord> getSalesData() {
-        SalesRepository repo = new SalesRepository();
-        return repo.getAllSales();
-    }
-
-    private List<String> getAllPositions() {
-        List<String> positions = new ArrayList<>();
-        String query = "SELECT DISTINCT Stanowisko FROM Pracownicy WHERE usuniety = FALSE";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/" + ILacz.DB_NAME + "?useSSL=false",
-                ILacz.MYSQL_USER, ILacz.MYSQL_PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(query);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                positions.add(rs.getString("Stanowisko"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return positions;
-    }
-
-    private List<String> getAllCategories() {
-        List<String> categories = new ArrayList<>();
-        String query = "SELECT DISTINCT Kategoria FROM Produkty";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/" + ILacz.DB_NAME + "?useSSL=false",
-                ILacz.MYSQL_USER, ILacz.MYSQL_PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(query);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                categories.add(rs.getString("Kategoria"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return categories;
     }
 
 }

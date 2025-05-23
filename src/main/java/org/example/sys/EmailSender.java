@@ -9,9 +9,20 @@
 package org.example.sys;
 
 import java.util.Properties;
-import javax.mail.*;
-import javax.mail.internet.*;
 
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.internet.MimeMessage;
+import javax.mail.Authenticator;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+
+/**
+ * Klasa do wysyłania wiadomości e-mail.
+ * Używa protokołu SMTP do wysyłania wiadomości.
+ */
 public class EmailSender {
 
     /**
@@ -56,6 +67,12 @@ public class EmailSender {
         Transport.send(email);
     }
 
+    /**
+     * Wysyła wiadomość e-mail z kodem resetowania hasła.
+     *
+     * @param email     adres e-mail odbiorcy
+     * @param resetCode kod resetowania hasła
+     */
     public static void sendResetEmail(String email, String resetCode) {
     }
 }

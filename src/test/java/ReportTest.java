@@ -13,7 +13,7 @@ class ReportTest {
     @Test
     void testConstructorInitialization() {
         Address address = new Address();
-        address.setMiasto("Warszawa");
+        address.setCity("Warszawa");
 
         Employee employee = new Employee();
         employee.setName("Jan");
@@ -23,23 +23,23 @@ class ReportTest {
         employee.setLogin("jkowal");
         try {
             employee.setPassword("bezpieczneHaslo");
-            employee.setZarobki(new BigDecimal("5000"));
+            employee.setSalary(new BigDecimal("5000"));
         } catch (Exception e) {
             fail("Nieoczekiwany wyjątek: " + e.getMessage());
         }
-        employee.setStanowisko("Kierownik");
-        employee.setAdres(address);
+        employee.setPosition("Kierownik");
+        employee.setAddress(address);
 
         LocalDate start = LocalDate.of(2025, 5, 1);
         LocalDate end = LocalDate.of(2025, 5, 31);
 
         Report report = new Report("Miesięczny", start, end, employee, "plik.pdf");
 
-        assertEquals("Miesięczny", report.getTypRaportu());
-        assertEquals(start, report.getDataPoczatku());
-        assertEquals(end, report.getDataZakonczenia());
-        assertEquals(employee, report.getPracownik());
-        assertEquals("plik.pdf", report.getSciezkaPliku());
+        assertEquals("Miesięczny", report.getReportType());
+        assertEquals(start, report.getStartDate());
+        assertEquals(end, report.getEndDate());
+        assertEquals(employee, report.getEmployee());
+        assertEquals("plik.pdf", report.getFilePath());
     }
 
     @Test
@@ -52,27 +52,27 @@ class ReportTest {
         Employee employee = new Employee();
         employee.setName("Anna");
 
-        report.setTypRaportu("Dzienny");
-        report.setDataPoczatku(startDate);
-        report.setDataZakonczenia(endDate);
-        report.setPracownik(employee);
-        report.setSciezkaPliku("raport_dzienny.pdf");
+        report.setReportType("Dzienny");
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        report.setEmployee(employee);
+        report.setFilePath("raport_dzienny.pdf");
 
-        assertEquals("Dzienny", report.getTypRaportu());
-        assertEquals(startDate, report.getDataPoczatku());
-        assertEquals(endDate, report.getDataZakonczenia());
-        assertEquals(employee, report.getPracownik());
-        assertEquals("raport_dzienny.pdf", report.getSciezkaPliku());
+        assertEquals("Dzienny", report.getReportType());
+        assertEquals(startDate, report.getStartDate());
+        assertEquals(endDate, report.getEndDate());
+        assertEquals(employee, report.getEmployee());
+        assertEquals("raport_dzienny.pdf", report.getFilePath());
     }
 
     @Test
     void testDefaultConstructorValues() {
         Report report = new Report();
 
-        assertNull(report.getTypRaportu());
-        assertNull(report.getDataPoczatku());
-        assertNull(report.getDataZakonczenia());
-        assertNull(report.getPracownik());
-        assertNull(report.getSciezkaPliku());
+        assertNull(report.getReportType());
+        assertNull(report.getStartDate());
+        assertNull(report.getEndDate());
+        assertNull(report.getEmployee());
+        assertNull(report.getFilePath());
     }
 }

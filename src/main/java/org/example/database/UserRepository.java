@@ -1,18 +1,10 @@
-/*
- * Classname: UserRepository
- * Version information: 1.0
- * Date: 2025-05-16
- * Copyright notice: © BŁĘKITNI
- */
-
 package org.example.database;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityTransaction;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.Persistence;
+import jakarta.persistence.*;
 import org.example.sys.Employee;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
 /**
@@ -20,9 +12,8 @@ import java.util.List;
  */
 public class UserRepository {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserRepository.class);
     private final EntityManagerFactory emf;
-
-    // Statyczna zmienna przechowująca ID zalogowanego użytkownika
     private static int loggedInEmployeeId = -1;
 
     /**
@@ -40,48 +31,109 @@ public class UserRepository {
     public List<Employee> pobierzWszystkichPracownikow() {
         EntityManager em = emf.createEntityManager();
         try {
-            return em.createQuery(
+            List<Employee> employees = em.createQuery(
                     "SELECT e FROM Employee e WHERE e.usuniety = FALSE", Employee.class
             ).getResultList();
+            logger.info("Pobrano {} aktywnych pracowników", employees.size());
+            return employees;
         } finally {
             em.close();
         }
     }
 
     /**
-     * Zwraca listę aktywnych kasjerów.
+     * Pobiera wszystkich aktywnych kasjerów.
      *
-     * @return lista aktywnych kasjerów
+     * @return lista kasjerów
      */
     public List<Employee> pobierzKasjerow() {
         EntityManager em = emf.createEntityManager();
         try {
-            return em.createQuery(
+            List<Employee> cashiers = em.createQuery(
                     "SELECT e FROM Employee e WHERE e.stanowisko = 'Kasjer' AND e.usuniety = FALSE",
                     Employee.class
             ).getResultList();
+            logger.info("Pobrano {} aktywnych kasjerów", cashiers.size());
+            return cashiers;
         } finally {
             em.close();
         }
     }
 
     /**
-     * Wyszukuje pracownika po loginie (tylko aktywnych).
+     * Wyszukuje pracownika po loginie.
      *
      * @param login login pracownika
-     * @return znaleziony pracownik lub null
+     * @return pracownik lub null
      */
     public Employee znajdzPoLoginie(String login) {
         EntityManager em = emf.createEntityManager();
         try {
             Employee employee = em.createQuery(
-                            "SELECT e FROM Employee e WHERE e.login = :login",
+                    "SELECT e FROM Employee e WHERE e.login = :login",
+                    Employee.class
+            ).setParameter("login", login).getSingleResult();
+
+            if (!employee.isUsuniety()) {
+                logger.info("Znaleziono pracownika po loginie: {}", login);
+                return employee;
+            }
+            logger.warn("Pracownik {} jest oznaczony jako usunięty", login);
+            return null;
+        } catch (NoResultException e) {
+            logger.warn("Nie znaleziono pracownika o loginie: {}", login);
+            return null;
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * Wyszukuje pracownika po loginie i haśle.
+     *
+     * @param login login
+     * @param haslo hasło
+     * @return pracownik lub null
+     */
+    public Employee znajdzPoLoginieIHasle(String login, String haslo) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            Employee employee = em.createQuery(
+                            "SELECT e FROM Employee e WHERE e.login = :login AND e.password = :haslo",
                             Employee.class
                     ).setParameter("login", login)
+                    .setParameter("haslo", haslo)
                     .getSingleResult();
 
-            return employee != null && !employee.isUsuniety() ? employee : null;
+            if (!employee.isUsuniety()) {
+                setLoggedInEmployee(employee.getId());
+                logger.info("Zalogowano pracownika: {}", login);
+                return employee;
+            }
+            logger.warn("Pracownik {} jest usunięty", login);
+            return null;
         } catch (NoResultException e) {
+            logger.warn("Nieprawidłowe dane logowania dla loginu: {}", login);
+            return null;
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * Wyszukuje pracownika po ID.
+     *
+     * @param id identyfikator pracownika
+     * @return pracownik lub null
+     */
+    public Employee znajdzPoId(int id) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            Employee employee = em.find(Employee.class, id);
+            if (employee != null && !employee.isUsuniety()) {
+                logger.info("Znaleziono pracownika o ID {}", id);
+                return employee;
+            }
             return null;
         } finally {
             em.close();
@@ -91,7 +143,7 @@ public class UserRepository {
     /**
      * Dodaje nowego pracownika.
      *
-     * @param pracownik pracownik do dodania
+     * @param pracownik nowy pracownik
      */
     public void dodajPracownika(Employee pracownik) {
         EntityManager em = emf.createEntityManager();
@@ -100,16 +152,17 @@ public class UserRepository {
             tx.begin();
             em.persist(pracownik);
             tx.commit();
+            logger.info("Dodano pracownika: {}", pracownik.getLogin());
+        } catch (Exception e) {
+            logger.error("Błąd podczas dodawania pracownika: {}", e.getMessage());
+            if (tx.isActive()) tx.rollback();
         } finally {
-            if (tx.isActive()) {
-                tx.rollback();
-            }
             em.close();
         }
     }
 
     /**
-     * Aktualizuje dane istniejącego pracownika.
+     * Aktualizuje dane pracownika.
      *
      * @param pracownik pracownik do aktualizacji
      */
@@ -120,24 +173,24 @@ public class UserRepository {
             tx.begin();
             em.merge(pracownik);
             tx.commit();
+            logger.info("Zaktualizowano dane pracownika: {}", pracownik.getLogin());
+        } catch (Exception e) {
+            logger.error("Błąd podczas aktualizacji pracownika: {}", e.getMessage());
+            if (tx.isActive()) tx.rollback();
         } finally {
-            if (tx.isActive()) {
-                tx.rollback();
-            }
             em.close();
         }
     }
 
     /**
-     * Oznacza pracownika jako usuniętego.
-     * Zabezpiecza przed usunięciem użytkownika z rolą "root".
+     * Usuwa (oznacza jako usunięty) pracownika.
      *
      * @param pracownik pracownik do usunięcia
-     * @throws SecurityException jeśli próbuje się usunąć użytkownika z rolą "root"
+     * @throws SecurityException jeśli próbujemy usunąć użytkownika "root"
      */
     public void usunPracownika(Employee pracownik) throws SecurityException {
-        // Sprawdź, czy pracownik ma rolę "root"
         if (pracownik != null && "root".equalsIgnoreCase(pracownik.getStanowisko())) {
+            logger.warn("Próba usunięcia użytkownika z rolą root");
             throw new SecurityException("Nie można usunąć użytkownika z rolą root");
         }
 
@@ -146,84 +199,27 @@ public class UserRepository {
         try {
             tx.begin();
             Employee managed = em.find(Employee.class, pracownik.getId());
-            if (managed != null) {
-                // Dodatkowe sprawdzenie na poziomie bazy danych
-                if ("root".equalsIgnoreCase(managed.getStanowisko())) {
-                    throw new SecurityException("Nie można usunąć użytkownika z rolą root");
-                }
+            if (managed != null && !"root".equalsIgnoreCase(managed.getStanowisko())) {
                 managed.setUsuniety(true);
                 em.merge(managed);
+                logger.info("Oznaczono pracownika jako usuniętego: {}", pracownik.getLogin());
+            } else {
+                logger.warn("Nie można usunąć pracownika: root lub nie znaleziono");
+                throw new SecurityException("Nie można usunąć użytkownika z rolą root");
             }
             tx.commit();
-        } finally {
-            if (tx.isActive()) {
-                tx.rollback();
-            }
-            em.close();
-        }
-    }
-
-    /**
-     * Wyszukuje pracownika po loginie i haśle (tylko aktywnych).
-     *
-     * @param login login pracownika
-     * @param haslo hasło pracownika
-     * @return znaleziony pracownik lub null, jeśli brak
-     */
-    public Employee znajdzPoLoginieIHasle(String login, String haslo) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            try {
-                Employee employee = em.createQuery(
-                                "SELECT e FROM Employee e WHERE e.login = :login AND e.password = :haslo",
-                                Employee.class
-                        ).setParameter("login", login)
-                        .setParameter("haslo", haslo)
-                        .getSingleResult();
-
-                // Dodatkowe sprawdzenie flagi 'usuniety'
-                if (employee != null && !employee.isUsuniety()) {
-                    setLoggedInEmployee(employee.getId());
-                    return employee;
-                }
-                return null;
-            } catch (NoResultException e) {
-                return null;
-            }
+        } catch (Exception e) {
+            logger.error("Błąd przy usuwaniu pracownika: {}", e.getMessage());
+            if (tx.isActive()) tx.rollback();
         } finally {
             em.close();
         }
     }
 
     /**
-     * Wyszukuje pracownika po identyfikatorze (tylko aktywnych).
+     * Zwraca aktualnie zalogowanego pracownika.
      *
-     * @param id identyfikator pracownika
-     * @return znaleziony pracownik lub null, jeśli brak
-     */
-    public Employee znajdzPoId(int id) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            Employee employee = em.find(Employee.class, id);
-            return employee != null && !employee.isUsuniety() ? employee : null;
-        } finally {
-            em.close();
-        }
-    }
-
-    /**
-     * Ustawia ID zalogowanego pracownika.
-     *
-     * @param employeeId ID pracownika
-     */
-    public static void setLoggedInEmployee(int employeeId) {
-        loggedInEmployeeId = employeeId;
-    }
-
-    /**
-     * Zwraca aktualnie zalogowanego pracownika (tylko aktywnych).
-     *
-     * @return pracownik lub null, jeśli brak
+     * @return zalogowany pracownik lub null
      */
     public Employee getCurrentEmployee() {
         if (loggedInEmployeeId == -1) {
@@ -240,19 +236,28 @@ public class UserRepository {
     }
 
     /**
+     * Ustawia ID zalogowanego pracownika.
+     *
+     * @param employeeId ID pracownika
+     */
+    public static void setLoggedInEmployee(int employeeId) {
+        loggedInEmployeeId = employeeId;
+    }
+
+    /**
      * Resetuje ID zalogowanego pracownika.
-     * Używane podczas wylogowywania.
      */
     public static void resetCurrentEmployee() {
         loggedInEmployeeId = -1;
     }
 
     /**
-     * Zamknięcie EntityManagerFactory.
+     * Zamyka EntityManagerFactory.
      */
     public void close() {
         if (emf != null && emf.isOpen()) {
             emf.close();
+            logger.info("Zamknięto EntityManagerFactory");
         }
     }
 }

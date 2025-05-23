@@ -14,7 +14,7 @@ class PersonTest {
 
     private Employee createTestEmployee() throws NameException, AgeException, PasswordException, SalaryException {
         Address address = new Address();
-        address.setMiasto("TestCity");
+        address.setCity("TestCity");
 
         return new Employee(
                 "Jan", "Kowalski", 30, "jan@example.com",

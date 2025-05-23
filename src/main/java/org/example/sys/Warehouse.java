@@ -1,80 +1,64 @@
-/*
- * Classname: Warehouse
- * Version information: 1.0
- * Date: 2025-05-16
- * Copyright notice: © BŁĘKITNI
- */
-
-
 package org.example.sys;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 
 @Entity
-@Table(name = "Produkty")
+@Table(name = "StanyMagazynowe")
 @Access(AccessType.FIELD)
 public class Warehouse {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "Id")
-    private int id;
+    @Column(name = "Id_produktu")
+    private int productId;
 
-    @Column(name = "Nazwa", nullable = false, length = 100)
-    private String nazwa;
+    @OneToOne
+    @JoinColumn(name = "Id_produktu", insertable = false, updatable = false)
+    private Product product;
 
-    @Column(name = "Cena", precision = 10, scale = 2, nullable = false)
-    private BigDecimal cena;
+    @Column(name = "Ilosc", nullable = false)
+    private int quantity;
 
-    @Column(name = "IloscWmagazynie", nullable = false)
-    private int iloscWmagazynie;
+    public Warehouse() {
+    }
 
-    public Warehouse() {}
-
-    public Warehouse(String nazwa, BigDecimal cena, int iloscWmagazynie) {
-        this.nazwa = nazwa;
-        this.cena = cena;
-        this.iloscWmagazynie = iloscWmagazynie;
+    public Warehouse(Product product, int quantity) {
+        this.product = product;
+        this.productId = product.getId(); // synchronizacja z kluczem głównym
+        this.quantity = quantity;
     }
 
     // === Gettery i settery ===
 
-    public int getId() {
-        return id;
+    public int getProductId() {
+        return productId;
     }
 
-    public String getNazwa() {
-        return nazwa;
+    public void setProductId(int productId) {
+        this.productId = productId;
     }
 
-    public void setNazwa(String nazwa) {
-        this.nazwa = nazwa;
+    public Product getProduct() {
+        return product;
     }
 
-    public BigDecimal getCena() {
-        return cena;
+    public void setProduct(Product product) {
+        this.product = product;
+        this.productId = product.getId();
     }
 
-    public void setCena(BigDecimal cena) {
-        this.cena = cena;
+    public int getQuantity() {
+        return quantity;
     }
 
-    public int getIloscWmagazynie() {
-        return iloscWmagazynie;
-    }
-
-    public void setIloscWmagazynie(int iloscWmagazynie) {
-        this.iloscWmagazynie = iloscWmagazynie;
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
     }
 
     @Override
     public String toString() {
         return "Warehouse{" +
-                "id=" + id +
-                ", nazwa='" + nazwa + '\'' +
-                ", cena=" + cena +
-                ", iloscWmagazynie=" + iloscWmagazynie +
+                "product=" + (product != null ? product.getName() : "null") +
+                ", quantity=" + quantity +
                 '}';
     }
 }

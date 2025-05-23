@@ -1,17 +1,11 @@
-/*
- * Classname: Product
- * Version information: 1.0
- * Date: 2025-05-16
- * Copyright notice: © BŁĘKITNI
- */
-
-
 package org.example.sys;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "Produkty")
+@Access(AccessType.FIELD)
 public class Product {
 
     @Id
@@ -19,42 +13,35 @@ public class Product {
     @Column(name = "Id")
     private int id;
 
-    @Column(name = "Nazwa")
+    @Column(name = "Nazwa", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "Kategoria")
+    @Column(name = "Kategoria", nullable = false, length = 100)
     private String category;
 
-    @Column(name = "Cena")
-    private double price;
+    @Column(name = "Cena", nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
 
-    @Column(name = "IloscWmagazynie")
+    @Column(name = "Ilosc", nullable = false)
     private int quantity;
 
-    // Default constructor
-    public Product() {
+    public Product() { }
+
+    public Product(String name, String category, double price) {
+        this(name, category, BigDecimal.valueOf(price));
     }
 
-    // Constructor with all fields except id
-    public Product(String name, String category, double price, int quantity) {
+    public Product(String name, String category, BigDecimal price) {
         this.name = name;
         this.category = category;
-        this.price = price;
-        this.quantity = quantity;
+        setPrice(price);
+        this.quantity = 0; // domyślna ilość
     }
 
-    // Constructor without quantity
-    public Product(String name, String category, double price) {
-        this(name, category, price, 0);
-    }
+    // === Gettery i settery ===
 
-    // Getters and setters
     public int getId() {
         return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public String getName() {
@@ -73,12 +60,12 @@ public class Product {
         this.category = category;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
-        if (price >= 0) {
+    public void setPrice(BigDecimal price) {
+        if (price != null && price.compareTo(BigDecimal.ZERO) >= 0) {
             this.price = price;
         }
     }
@@ -87,15 +74,18 @@ public class Product {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
-        if (quantity >= 0) {
-            this.quantity = quantity;
+    /**
+     * Ustawia ilość produktu tylko jeśli jest większa lub równa 0.
+     */
+    public void setQuantity(int nowaIlosc) {
+        if (nowaIlosc >= 0) {
+            this.quantity = nowaIlosc;
         }
     }
 
     @Override
     public String toString() {
-        return String.format("Product{id=%d, name='%s', category='%s', price=%.2f, quantity=%d}",
+        return String.format("Product{id=%d, name='%s', category='%s', price=%s, quantity=%d}",
                 id, name, category, price, quantity);
     }
 }

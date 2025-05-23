@@ -1,7 +1,7 @@
 /*
  * Classname: Manager
- * Version information: 1.0
- * Date: 2025-05-16
+ * Version information: 1.1
+ * Date: 2025-05-22
  * Copyright notice: © BŁĘKITNI
  */
 
@@ -24,29 +24,51 @@ public class Manager {
     private final Employee employee;
     private final List<Employee> managedEmployees;
 
+    /**
+     * Tworzy nową instancję menedżera na podstawie istniejącego pracownika.
+     *
+     * @param employee Pracownik, który staje się menedżerem.
+     */
     public Manager(Employee employee) {
         this.employee = employee;
         this.managedEmployees = new ArrayList<>();
     }
 
+    /**
+     * Zwraca pracownika, który jest menedżerem.
+     *
+     * @return Pracownik będący menedżerem.
+     */
     public Employee getEmployee() {
         return employee;
     }
 
+    /**
+     * Dodaje pracownika do listy pracowników zarządzanych przez menedżera.
+     * */
     public void addEmployee(Employee e) {
         if (e != null && !managedEmployees.contains(e)) {
             managedEmployees.add(e);
         }
     }
 
+    /**
+     * Usuwa pracownika z listy pracowników zarządzanych przez menedżera.
+     */
     public void removeEmployee(Employee e) {
         managedEmployees.remove(e);
     }
 
+    /**
+     * Zwraca listę pracowników
+     */
     public List<Employee> getManagedEmployees() {
         return managedEmployees;
     }
 
+    /**
+     * Aktualizuje imię menedżera.
+     */
     public void updateName(String newName) {
         try {
             employee.setName(newName);
@@ -55,6 +77,9 @@ public class Manager {
         }
     }
 
+    /**
+     * Aktualizuje nazwisko menedżera.
+     */
     public void updateSurname(String newSurname) {
         try {
             employee.setSurname(newSurname);
@@ -63,6 +88,11 @@ public class Manager {
         }
     }
 
+    /**
+     * Aktualizuje wiek menedżera.
+     *
+     * @param newAge aktualizuje wiek menedżera
+     */
     public void updateAge(int newAge) {
         try {
             employee.setAge(newAge);
@@ -71,10 +101,19 @@ public class Manager {
         }
     }
 
+    /**
+     * Aktualizuje adres menedżera.
+     *
+     * @param newAddress aktualizuje adres menedżera
+     */
     public void updateAddress(Address newAddress) {
-        employee.setAdres(newAddress);
+        employee.setAddress(newAddress);
     }
 
+    /**
+     * Aktualizuje hasło menedżera.
+     * @param newPassword
+     */
     public void updatePassword(String newPassword) {
         try {
             employee.setPassword(newPassword);
@@ -83,19 +122,33 @@ public class Manager {
         }
     }
 
+    /**
+     * Aktualizuje stanowisko menedżera.
+     *
+     * @param newDepartment aktualizuje stanowisko menedżera
+     */
     public void updateDepartment(String newDepartment) {
-        employee.setStanowisko(newDepartment);
+        employee.setPosition(newDepartment);
     }
 
+    /**
+     * Aktualizuje wynagrodzenie menedżera.
+     *
+     * @param newSalary aktualizuje wynagrodzenie menedżera
+     */
     public void updateSalary(BigDecimal newSalary) {
         try {
-            employee.setZarobki(newSalary);
+            employee.setSalary(newSalary);
         } catch (SalaryException e) {
             System.err.println("Błąd zmiany wynagrodzenia: " + e.getMessage());
         }
     }
 
-    public void wygenerujRaportZespolu() {
-        System.out.println("Menedżer " + employee.getName() + " generuje raport dla " + managedEmployees.size() + " pracowników.");
+    /**
+     * Generuje raport dla zespołu menedżera.
+     */
+    public void generateTeamReport() {
+        System.out.println("Menedżer " + employee.getName() + " generuje raport " +
+                "dla " + managedEmployees.size() + " pracowników.");
     }
 }

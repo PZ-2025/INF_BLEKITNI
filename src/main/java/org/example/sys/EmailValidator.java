@@ -1,6 +1,16 @@
 package org.example.sys;
 
+/**
+ * Klasa EmailValidator służy do walidacji adresów e-mail.
+ * Zawiera metodę isValid, która sprawdza poprawność adresu e-mail.
+ */
 public class EmailValidator {
+    /**
+     * Sprawdza, czy podany adres e-mail jest poprawny.
+     *
+     * @param email Adres e-mail do sprawdzenia.
+     * @return true, jeśli adres e-mail jest poprawny, false w przeciwnym razie.
+     */
     public static boolean isValid(String email) {
         // Sprawdzenie, czy adres e-mail zawiera znak '@'
         if (email == null || !email.contains("@")) {

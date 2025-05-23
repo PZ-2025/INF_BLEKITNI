@@ -1,4 +1,3 @@
-
 import org.example.sys.Registration;
 import org.example.sys.StatusRegistration;
 import org.junit.jupiter.api.Test;
@@ -9,14 +8,14 @@ class RegistrationTest {
 
     @Test
     void testFullConstructor() {
-        Registration registration = new Registration("Wiadomość", "Jan", "Kowalski", LocalDate.of(2023, 10, 1), "Tytuł", StatusRegistration.ZAAKCEPTOWANY);
+        Registration registration = new Registration("Wiadomość", "Jan", "Kowalski", LocalDate.of(2023, 10, 1), "Tytuł", StatusRegistration.ACCEPTED);
 
         assertEquals("Wiadomość", registration.getMessage());
         assertEquals("Jan", registration.getName());
         assertEquals("Kowalski", registration.getSurname());
         assertEquals("Tytuł", registration.getTitle());
         assertEquals(LocalDate.of(2023, 10, 1), registration.getDate());
-        assertEquals(StatusRegistration.ZAAKCEPTOWANY, registration.getStatus());
+        assertEquals(StatusRegistration.ACCEPTED, registration.getStatus());
     }
 
     @Test
@@ -28,7 +27,7 @@ class RegistrationTest {
         assertEquals("Nowak", registration.getSurname());
         assertEquals("Tytuł", registration.getTitle());
         assertEquals(LocalDate.of(2023, 10, 1), registration.getDate());
-        assertEquals(StatusRegistration.OCZEKUJACY, registration.getStatus()); // Default status
+        assertEquals(StatusRegistration.PENDING, registration.getStatus()); // Default status
     }
 
     @Test
@@ -40,7 +39,7 @@ class RegistrationTest {
         assertNull(registration.getSurname());
         assertNull(registration.getTitle());
         assertEquals(LocalDate.of(2023, 10, 1), registration.getDate());
-        assertEquals(StatusRegistration.OCZEKUJACY, registration.getStatus()); // Default status
+        assertEquals(StatusRegistration.PENDING, registration.getStatus()); // Default status
     }
 
     @Test
@@ -51,35 +50,35 @@ class RegistrationTest {
         registration.setSurname("Wiśniewski");
         registration.setTitle("Nowy tytuł");
         registration.setDate(LocalDate.of(2024, 1, 1));
-        registration.setStatus(StatusRegistration.ZREALIZOWANY);
+        registration.setStatus(StatusRegistration.COMPLETED);
 
         assertEquals("Nowa wiadomość", registration.getMessage());
         assertEquals("Piotr", registration.getName());
         assertEquals("Wiśniewski", registration.getSurname());
         assertEquals("Nowy tytuł", registration.getTitle());
         assertEquals(LocalDate.of(2024, 1, 1), registration.getDate());
-        assertEquals(StatusRegistration.ZREALIZOWANY, registration.getStatus());
+        assertEquals(StatusRegistration.COMPLETED, registration.getStatus());
     }
 
     @Test
     void testAcceptMethod() {
         Registration registration = new Registration("Wiadomość", "Jan", "Kowalski", LocalDate.of(2023, 10, 1), "Tytuł");
         registration.accept();
-        assertEquals(StatusRegistration.ZAAKCEPTOWANY, registration.getStatus());
+        assertEquals(StatusRegistration.ACCEPTED, registration.getStatus());
     }
 
     @Test
     void testRejectMethod() {
         Registration registration = new Registration("Wiadomość", "Jan", "Kowalski", LocalDate.of(2023, 10, 1), "Tytuł");
         registration.reject();
-        assertEquals(StatusRegistration.ODRZUCONY, registration.getStatus());
+        assertEquals(StatusRegistration.REJECTED, registration.getStatus());
     }
 
     @Test
     void testRealizeMethod() {
         Registration registration = new Registration("Wiadomość", "Jan", "Kowalski", LocalDate.of(2023, 10, 1), "Tytuł");
         registration.realize();
-        assertEquals(StatusRegistration.ZREALIZOWANY, registration.getStatus());
+        assertEquals(StatusRegistration.COMPLETED, registration.getStatus());
     }
 
     @Test

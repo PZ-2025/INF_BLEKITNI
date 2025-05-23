@@ -1,12 +1,11 @@
 /*
  * Classname: TestAddressRepository
- * Version information: 1.0
- * Date: 2025-05-12
+ * Version information: 1.1
+ * Date: 2025-05-22
  * Copyright notice: © BŁĘKITNI
  */
 
-package org.example.database;
-
+import org.example.database.AddressRepository;
 import org.example.sys.Address;
 
 import java.util.List;
@@ -14,7 +13,7 @@ import java.util.List;
 /**
  * Klasa testująca działanie AddressRepository.
  */
-public class TestAddressRepository {
+public class AddressRepositoryTest {
 
     public static void main(String[] args) {
         AddressRepository addressRepo = new AddressRepository();
@@ -22,30 +21,30 @@ public class TestAddressRepository {
         try {
             // === 1. Dodanie nowego adresu ===
             Address address1 = new Address();
-            address1.setMiejscowosc("Testowo");
-            address1.setMiasto("Miastko");
-            address1.setKodPocztowy("99-999");
-            address1.setNumerDomu("10B");
-            address1.setNumerMieszkania("3");
+            address1.setTown("Testowo");
+            address1.setCity("Miastko");
+            address1.setZipCode("99-999");
+            address1.setHouseNumber("10B");
+            address1.setApartmentNumber("3");
 
-            addressRepo.dodajAdres(address1);
+            addressRepo.addAddress(address1);
             System.out.println(">>> Dodano adres!");
 
             // === 2. Wyświetlenie wszystkich adresów ===
             System.out.println("\n>>> Lista adresów:");
-            wypiszAdresy(addressRepo.pobierzWszystkieAdresy());
+            writeAddresses(addressRepo.getAllAddresses());
 
             // === 3. Odczyt po ID ===
-            Address znaleziony = addressRepo.znajdzAdresPoId(address1.getId());
+            Address znaleziony = addressRepo.findAddressById(address1.getId());
             System.out.println("\n>>> Adres po ID: " + znaleziony);
 
             // === 4. Usunięcie adresu ===
-            addressRepo.usunAdres(address1.getId());
+            addressRepo.removeAddress(address1.getId());
             System.out.println(">>> Usunięto adres.");
 
             // === 5. Wyświetlenie po usunięciu ===
             System.out.println("\n>>> Lista adresów po usunięciu:");
-            wypiszAdresy(addressRepo.pobierzWszystkieAdresy());
+            writeAddresses(addressRepo.getAllAddresses());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -57,18 +56,18 @@ public class TestAddressRepository {
     /**
      * Pomocnicza metoda wypisująca listę adresów.
      *
-     * @param adresy lista adresów
+     * @param addresses lista adresów
      */
-    private static void wypiszAdresy(List<Address> adresy) {
-        if (adresy.isEmpty()) {
+    private static void writeAddresses(List<Address> addresses) {
+        if (addresses.isEmpty()) {
             System.out.println("(Brak adresów)");
         } else {
-            for (Address a : adresy) {
+            for (Address a : addresses) {
                 System.out.printf("ID: %-3d Miasto: %-15s Miejscowość: %-15s Kod: %-10s%n",
                         a.getId(),
-                        a.getMiasto(),
-                        a.getMiejscowosc(),
-                        a.getKodPocztowy()
+                        a.getCity(),
+                        a.getTown(),
+                        a.getZipCode()
                 );
             }
         }

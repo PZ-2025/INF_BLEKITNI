@@ -17,27 +17,67 @@ public class ConfigPdf {
     private static String pathPdf = "src/main/resources/raport.pdf";
     private static Sort sort = Sort.DEFAULT;
 
+    /**
+     * Ustawia wszystkie parametry konfiguracyjne.
+     *
+     * @param pathLogo Ścieżka do logo.
+     * @param pathPdf  Ścieżka do pliku PDF.
+     * @param sort     Obiekt Sort definiujący sposób sortowania.
+     */
     public void setAll(String pathLogo, String pathPdf, Sort sort) {
         ConfigPdf.pathLogo = pathLogo;
         ConfigPdf.pathPdf = pathPdf;
         ConfigPdf.sort = sort;
     }
 
+    /**
+     * Ustawia domyślne parametry konfiguracyjne.
+     */
     public static String getPathLogo() {
         return ConfigPdf.pathLogo;
     }
+
+    /**
+     * Ustawia ścieżkę do logo.
+     *
+     * @param pathLogo Ścieżka do logo.
+     */
     public static void setPathLogo(String pathLogo) {
         ConfigPdf.pathLogo = pathLogo;
     }
+
+    /**
+     * Zwraca ścieżkę do pliku PDF.
+     *
+     * @return zwraca ścieżkę do pliku PDF.
+     */
     public static String getPathPdf() {
         return ConfigPdf.pathPdf;
     }
+
+    /**
+     * Ustawia ścieżkę do pliku PDF.
+     *
+     * @param pathPdf Ścieżka do pliku PDF.
+     */
     public static void setPathPdf(String pathPdf) {
         ConfigPdf.pathPdf = pathPdf;
     }
+
+    /**
+     * Zwraca obiekt Sort definiujący sposób sortowania.
+     *
+     * @return Obiekt Sort definiujący sposób sortowania.
+     */
     public static Sort getSort() {
         return ConfigPdf.sort;
     }
+
+    /**
+     * Ustawia obiekt Sort definiujący sposób sortowania.
+     *
+     * @param sort Obiekt Sort definiujący sposób sortowania.
+     */
     public static void setSort(Sort sort) {
         ConfigPdf.sort = sort;
     }

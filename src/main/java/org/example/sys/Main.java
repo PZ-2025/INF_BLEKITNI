@@ -24,7 +24,7 @@ public class Main {
         // https://myaccount.google.com/apppasswords?spm=a2ty_o01.29997173.0.0.5d57c9212jdST3
         // zapisałem linka do stworzenia hasła aplikacji
         String toEmailAddress = "";
-        String  fromEmailAddress = "";
+        String fromEmailAddress = "";
         String password = ""; // UWAGA: Nie przechowuj hasła w kodzie!
         String subject = "test";
         String bodyText = "nie wiem czy to działa";

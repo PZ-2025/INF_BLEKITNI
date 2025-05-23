@@ -5,14 +5,27 @@
  * Copyright notice: © BŁĘKITNI
  */
 
-
 package org.example.sys;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Column;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/**
+ * Klasa reprezentująca zamówienie w systemie.
+ * Zawiera informacje o produkcie, pracowniku, ilości, cenie i dacie zamówienia.
+ */
 @Entity
 @Table(name = "Zamowienia")
 @Access(AccessType.FIELD)
@@ -25,88 +38,160 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "Id_produktu", nullable = false)
-    private Warehouse produkt;
+    private Product product;
 
     @ManyToOne
     @JoinColumn(name = "Id_pracownika", nullable = false)
-    private Employee pracownik;
+    private Employee employee;
 
     @Column(name = "Ilosc", nullable = false)
-    private int ilosc;
+    private int quantity;
 
     @Column(name = "Cena", nullable = false, precision = 10, scale = 2)
-    private BigDecimal cena;
+    private BigDecimal price;
 
     @Temporal(TemporalType.DATE)
     @Column(name = "Data", nullable = false)
-    private Date data;
+    private Date date;
 
+    /**
+     * Domyślny konstruktor.
+     */
     public Order() {
     }
 
-    public Order(Warehouse produkt, Employee pracownik, int ilosc, BigDecimal cena, Date data) {
-        this.produkt = produkt;
-        this.pracownik = pracownik;
-        this.ilosc = ilosc;
-        this.cena = cena;
-        this.data = data;
+    /**
+     * Konstruktor z parametrami.
+     *
+     * @param product  Produkt zamówienia
+     * @param employee Pracownik realizujący zamówienie
+     * @param quantity    Ilość zamówionego produktu
+     * @param price     Cena zamówienia
+     * @param date     Data zamówienia
+     */
+    public Order(Product product, Employee employee, int quantity, BigDecimal price, Date date) {
+        this.product = product;
+        this.employee = employee;
+        this.quantity = quantity;
+        this.price = price;
+        this.date = date;
     }
 
     // === Gettery i settery ===
 
+    /**
+     * Zwraca id zamówienia.
+     *
+     * @return Identyfikator zamówienia
+     */
     public int getId() {
         return id;
     }
 
-    public Warehouse getProdukt() {
-        return produkt;
+    /**
+     * Zwraca product zamówienia.
+     *
+     * @return product Produkt zamówienia
+     */
+    public Product getProduct() {
+        return product;
     }
 
-    public void setProdukt(Warehouse produkt) {
-        this.produkt = produkt;
+    /**
+     * Ustawia product zamówienia.
+     *
+     * @param product Produkt zamówienia
+     */
+    public void setProduct(Product product) {
+        this.product = product;
     }
 
-    public Employee getPracownik() {
-        return pracownik;
+    /**
+     * Zwraca pracownika realizującego zamówienie.
+     *
+     * @return employee Pracownik realizujący zamówienie
+     */
+    public Employee getEmployee() {
+        return employee;
     }
 
-    public void setPracownik(Employee pracownik) {
-        this.pracownik = pracownik;
+    /**
+     * Ustawia pracownika realizującego zamówienie.
+     *
+     * @param employee Pracownik realizujący zamówienie
+     */
+    public void setEmployee(Employee employee) {
+        this.employee = employee;
     }
 
-    public int getIlosc() {
-        return ilosc;
+    /**
+     * Zwraca ilość zamówionego produktu.
+     *
+     * @return quantity Ilość zamówionego produktu
+     */
+    public int getQuantity() {
+        return quantity;
     }
 
-    public void setIlosc(int ilosc) {
-        this.ilosc = ilosc;
+    /**
+     * Ustawia ilość zamówionego produktu.
+     *
+     * @param quantity Ilość zamówionego produktu
+     */
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
     }
 
-    public BigDecimal getCena() {
-        return cena;
+    /**
+     * Zwraca cenę zamówienia.
+     *
+     * @return price Cena zamówienia
+     */
+    public BigDecimal getPrice() {
+        return price;
     }
 
-    public void setCena(BigDecimal cena) {
-        this.cena = cena;
+    /**
+     * Ustawia cenę zamówienia.
+     *
+     * @param price Cena zamówienia
+     */
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
-    public Date getData() {
-        return data;
+    /**
+     * Zwraca datę zamówienia.
+     *
+     * @return date Data zamówienia
+     */
+    public Date getDate() {
+        return date;
     }
 
-    public void setData(Date data) {
-        this.data = data;
+    /**
+     * Ustawia datę zamówienia.
+     *
+     * @param date Data zamówienia
+     */
+    public void setDate(Date date) {
+        this.date = date;
     }
 
+    /**
+     * Zwraca reprezentację tekstową zamówienia.
+     *
+     * @return Reprezentacja tekstowa zamówienia
+     */
     @Override
     public String toString() {
         return "Order{" +
                 "id=" + id +
-                ", produkt=" + (produkt != null ? produkt.getNazwa() : "null") +
-                ", pracownik=" + (pracownik != null ? pracownik.getLogin() : "null") +
-                ", ilosc=" + ilosc +
-                ", cena=" + cena +
-                ", data=" + data +
+                ", product=" + (product != null ? product.getName() : "null") +
+                ", employee=" + (employee != null ? employee.getLogin() : "null") +
+                ", quantity=" + quantity +
+                ", price=" + price +
+                ", date=" + date +
                 '}';
     }
 }
